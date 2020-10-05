@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         eBooks Assistant
 // @namespace    https://github.com/caspartse/eBooksAssistant
-// @version      0.1
+// @version      0.2
 // @description  eBooks Assistant for douban.com
 // @author       Caspar Tse
 // @match        https://book.douban.com/subject/*
@@ -24,8 +24,8 @@
                 var doc = responseDetail.responseText;
                 var errorFlag = /("totalResultCount"\:0)|(在Kindle商店中未找到)/.exec(doc);
                 if (!errorFlag) {
-                    var regexAazonUrl = /href="(\S+keywords=\d+[^"]+)"/gi
-                    var amazonUrl = "https://www.amazon.cn" + regexAazonUrl.exec(responseDetail.responseText)[1];
+                    var regexAmazonUrl = /href="(\S+keywords=\d+[^"]+)"/gi;
+                    var amazonUrl = "https://www.amazon.cn" + regexAmazonUrl.exec(doc)[1];
                     amazonUrl = amazonUrl.replace(ibsn, title);
                     var partnerTemplate = '';
                     if ($(".online-partner").length) {
@@ -35,6 +35,13 @@
                         partnerTemplate = '<div class="online-partner"> <div class="online-type"> <span>在线试读：</span> <div class="online-read-or-audio"> <a class="impression_track_mod_buyinfo" target="_blank" href="{templateUrl}" one-link-mark="yes"> <img src="https://s1.ax1x.com/2020/10/05/0JbHKI.jpg" width="16" height="16"> <span>Kindle</span> </a> </div></div> </div>';
                         $("#link-report").after(partnerTemplate.replace("{templateUrl}", amazonUrl));
                     }
+                    var regexAmazonPrice = /<span class="a-offscreen">￥([0-9\.]+)<\/span>/gi;
+                    var amazonPrice = regexAmazonPrice.exec(doc)[1];
+                    console.log(amazonPrice);
+                    var buyItemTemplate = '<li> <div class="cell price-btn-wrapper"> <div class="vendor-name"> <a target="_blank" href="{templateUrl}"> <span>Kindle</span> </a> </div> <div class="cell impression_track_mod_buyinfo"> <div class="cell price-wrapper"> <a target="_blank" href="{templateUrl}"> <span class="buylink-price "> {templatePrice}元 </span> </a> </div> <div class="cell"> <a target="_blank" href="{templateUrl}" class="buy-book-btn e-book-btn"> <span>购买电子书</span> </a> </div> </div> </div> </li>'
+                    buyItemTemplate = buyItemTemplate.replaceAll("{templateUrl}", amazonUrl);
+                    buyItemTemplate = buyItemTemplate.replace("{templatePrice}", amazonPrice);
+                    $("#buyinfo ul:nth-child(2)").prepend(buyItemTemplate);
                 }
                 return;
             }
