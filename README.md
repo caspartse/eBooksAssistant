@@ -3,8 +3,9 @@ eBooks Assistant for douban.com
 
 ## Features
 
-### 1. 为"在线试读"增加亚马逊 Kindle、图灵社区链接
-### 2. 为"当前版本有售"增加亚马逊 Kindle、图灵社区链接
+### 1. 增加亚马逊 Kindle在线试读链接、购买链接
+### 2. 增加图灵社区在线试读链接、购买链接
+### 3. 增加喜马拉雅在线试听链接
 
 Greasy Fork 在线安装： [https://greasyfork.org/en/scripts/412479-ebooks-assistant](https://greasyfork.org/en/scripts/412479-ebooks-assistant)
 
