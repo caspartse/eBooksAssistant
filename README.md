@@ -7,8 +7,8 @@ eBooks Assistant for douban.com
 ### 2. 增加图灵社区在线试读链接、购买链接
 ### 3. 增加喜马拉雅在线试听链接
 
-![](https://raw.githubusercontent.com/caspartse/eBooksAssistant/master/screenshots/sc001.jpeg)
+![](https://raw.githubusercontent.com/caspartse/eBooksAssistant/main/screenshots/sc001.jpeg)
 
-![](https://raw.githubusercontent.com/caspartse/eBooksAssistant/master/screenshots/sc002.jpeg)
+![](https://raw.githubusercontent.com/caspartse/eBooksAssistant/main/screenshots/sc002.jpeg)
 
 Greasy Fork 在线安装： [https://greasyfork.org/en/scripts/412479-ebooks-assistant](https://greasyfork.org/en/scripts/412479-ebooks-assistant)
