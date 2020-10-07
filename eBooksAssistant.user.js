@@ -1,14 +1,17 @@
 // ==UserScript==
 // @name         eBooks Assistant
+// @name:zh-CN   豆瓣读书助手
 // @namespace    https://github.com/caspartse/eBooksAssistant
-// @version      0.3.0
+// @version      0.5.0
 // @description  eBooks Assistant for douban.com
+// @description:zh-cn 为豆瓣读书页面添加亚马逊Kindle、图灵社区、喜马拉雅等链接
 // @author       Caspar Tse
+// @license      MIT License
+// @supportURL   https://github.com/caspartse/eBooksAssistant
 // @match        https://book.douban.com/subject/*
 // @require      https://cdn.bootcdn.net/ajax/libs/jquery/1.10.0/jquery.min.js
-// @connect      douban.com
 // @connect      amazon.cn
-// @connect      106.52.138.60
+// @connect      127.0.0.1
 // @grant        GM_xmlhttpRequest
 // ==/UserScript==
 
@@ -57,7 +60,7 @@
     function queryTuring(isbn) {
             GM_xmlhttpRequest({
             method: "GET",
-            url: "http://106.52.138.60:8081/turingebooks?isbn=" + isbn,
+            url: "http://127.0.0.1:8081/turing?isbn=" + isbn,
             headers: {
                 'User-agent': window.navigator.userAgent,
             },
@@ -89,7 +92,7 @@
     function queryXimalaya(title) {
         GM_xmlhttpRequest({
             method: "GET",
-            url: "http://106.52.138.60:8081/ximalaya?title=" + title,
+            url: "http://127.0.0.1:8081/ximalaya?title=" + title,
             headers: {
                 'User-agent': window.navigator.userAgent,
             },
