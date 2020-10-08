@@ -2,7 +2,7 @@
 // @name         eBooks Assistant
 // @name:zh-CN   豆瓣读书助手
 // @namespace    https://github.com/caspartse/eBooksAssistant
-// @version      0.5.1
+// @version      0.6.0
 // @description  eBooks Assistant for douban.com
 // @description:zh-CN 为豆瓣读书页面添加亚马逊Kindle、图灵社区、喜马拉雅等链接
 // @author       Caspar Tse
@@ -119,6 +119,38 @@
         return;
     }
 
+    function queryDuokan(isbn) {
+            GM_xmlhttpRequest({
+            method: "GET",
+            url: "http://106.52.138.60:8081/duokan?isbn=" + isbn,
+            headers: {
+                'User-agent': window.navigator.userAgent,
+            },
+            onload: function(responseDetail) {
+                var result = JSON.parse(responseDetail.responseText);
+                console.log(result);
+                if (result.errmsg == '') {
+                    var duokanUrl = result.data.url;
+                    var duokanPrice = result.data.price;
+                    var partnerTemplate = '';
+                    if ($(".online-partner").length) {
+                        partnerTemplate = '<div class="online-read-or-audio"> <a class="impression_track_mod_buyinfo" target="_blank" href="{templateUrl}"> <img src="https://s1.ax1x.com/2020/10/08/0wylUH.png" width="16" height="16"> <span>多看阅读</span> </a> </div>';
+                        $('.online-type[data-ebassistant="read"]').append(partnerTemplate.replace("{templateUrl}", duokanUrl));
+                    } else {
+                        partnerTemplate = '<div class="online-partner"> <div class="online-type" data-ebassistant="read"> <span>在线试读：</span> <div class="online-read-or-audio"> <a class="impression_track_mod_buyinfo" target="_blank" href="{templateUrl}" one-link-mark="yes"> <img src="https://s1.ax1x.com/2020/10/08/0wylUH.png" width="16" height="16"> <span>多看阅读</span> </a> </div></div> </div>';
+                        $("#link-report").after(partnerTemplate.replace("{templateUrl}", duokanUrl));
+                    }
+                    var buyItemTemplate = '<li> <div class="cell price-btn-wrapper"> <div class="vendor-name"> <a target="_blank" href="{templateUrl}"> <span style="color:#418FDE;"><img src="https://s1.ax1x.com/2020/10/08/0wylUH.png" style="border-radius: 50%; box-shadow: 0 0 1px 0 rgba(0,0,0,0.6);" width="16" height="16" border="0">&nbsp;多看阅读</span> </a> </div> <div class="cell impression_track_mod_buyinfo"> <div class="cell price-wrapper"> <a target="_blank" href="{templateUrl}"> <span class="buylink-price "> {templatePrice}元 </span> </a> </div> <div class="cell"> <a target="_blank" href="{templateUrl}" class="buy-book-btn e-book-btn"> <span>购买电子书</span> </a> </div> </div> </div> </li>';
+                    buyItemTemplate = buyItemTemplate.replaceAll("{templateUrl}", duokanUrl);
+                    buyItemTemplate = buyItemTemplate.replace("{templatePrice}", duokanPrice);
+                    $("#buyinfo ul:nth-child(2)").prepend(buyItemTemplate);
+                }
+                return;
+            }
+        });
+        return;
+    }
+
     try {
         $(".online-partner .online-type:nth-child(1)").attr("data-ebassistant", "read");
         $(".online-partner .online-type:nth-child(2)").attr("data-ebassistant", "audio");
@@ -147,6 +179,7 @@
 
     queryAmazon(title, isbn);
     queryTuring(isbn);
+    queryDuokan(isbn);
     queryXimalaya(title, author);
 
     return;

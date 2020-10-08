@@ -8,6 +8,7 @@ eBooks Assistant for douban.com
 -  添加亚马逊 Kindle在线试读链接、购买链接
 -  添加图灵社区在线试读链接、购买链接
 -  添加喜马拉雅在线试听链接
+-  添加多看阅读在线试读链接、购买链接
 
 ![](https://raw.githubusercontent.com/caspartse/eBooksAssistant/main/screenshots/sc001.jpeg)
 
