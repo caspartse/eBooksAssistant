@@ -2,7 +2,7 @@
 // @name         eBooks Assistant
 // @name:zh-CN   豆瓣读书助手
 // @namespace    https://github.com/caspartse/eBooksAssistant
-// @version      0.6.0
+// @version      0.6.1
 // @description  eBooks Assistant for douban.com
 // @description:zh-CN 为豆瓣读书页面添加亚马逊Kindle、图灵社区、喜马拉雅等链接
 // @author       Caspar Tse
@@ -14,6 +14,7 @@
 // @connect      127.0.0.1
 // @grant        GM_xmlhttpRequest
 // ==/UserScript==
+
 
 (function() {
     function queryAmazon(title, isbn) {
@@ -31,10 +32,14 @@
                     var amazonUrl = "https://www.amazon.cn" + regexAmazonUrl.exec(doc)[1];
                     amazonUrl = amazonUrl.replace(isbn, title);
                     var partnerTemplate = '';
-                    if ($(".online-partner").length) {
+                    if ($('.online-type[data-ebassistant="read"]').length) {
                         partnerTemplate = '<div class="online-read-or-audio"> <a class="impression_track_mod_buyinfo" target="_blank" href="{templateUrl}"> <img src="https://s1.ax1x.com/2020/10/05/0JbHKI.jpg" width="16" height="16"> <span>Kindle</span> </a> </div>';
                         $('.online-type[data-ebassistant="read"]').append(partnerTemplate.replace("{templateUrl}", amazonUrl));
-                    } else {
+                    } else if ($('.online-type[data-ebassistant="audio"]').length) {
+                        partnerTemplate = '<div class="online-type" data-ebassistant="read"> <span>在线试读：</span> <div class="online-read-or-audio"> <a class="impression_track_mod_buyinfo" target="_blank" href="{templateUrl}" one-link-mark="yes"> <img src="https://s1.ax1x.com/2020/10/05/0JbHKI.jpg" width="16" height="16"> <span>Kindle</span> </a> </div></div>';
+                        $('.online-type[data-ebassistant="audio"]').before(partnerTemplate.replace("{templateUrl}", amazonUrl));
+                    }
+                    else {
                         partnerTemplate = '<div class="online-partner"> <div class="online-type" data-ebassistant="read"> <span>在线试读：</span> <div class="online-read-or-audio"> <a class="impression_track_mod_buyinfo" target="_blank" href="{templateUrl}" one-link-mark="yes"> <img src="https://s1.ax1x.com/2020/10/05/0JbHKI.jpg" width="16" height="16"> <span>Kindle</span> </a> </div></div> </div>';
                         $("#link-report").after(partnerTemplate.replace("{templateUrl}", amazonUrl));
                     }
@@ -71,10 +76,13 @@
                     var turingUrl = result.data.url;
                     var turingPrice = result.data.price;
                     var partnerTemplate = '';
-                    if ($(".online-partner").length) {
+                    if ($('.online-type[data-ebassistant="read"]').length) {
                         partnerTemplate = '<div class="online-read-or-audio"> <a class="impression_track_mod_buyinfo" target="_blank" href="{templateUrl}"> <img src="https://s1.ax1x.com/2020/10/06/0UsLZj.png" width="16" height="16"> <span>图灵社区</span> </a> </div>';
                         $('.online-type[data-ebassistant="read"]').append(partnerTemplate.replace("{templateUrl}", turingUrl));
-                    } else {
+                    } else if ($('.online-type[data-ebassistant="audio"]').length) {
+                        partnerTemplate = '<div class="online-type" data-ebassistant="read"> <span>在线试读：</span> <div class="online-read-or-audio"> <a class="impression_track_mod_buyinfo" target="_blank" href="{templateUrl}" one-link-mark="yes"> <img src="https://s1.ax1x.com/2020/10/06/0UsLZj.png" width="16" height="16"> <span>图灵社区</span> </a> </div></div>';
+                        $('.online-type[data-ebassistant="audio"]').before(partnerTemplate.replace("{templateUrl}", turingUrl));
+                    }else {
                         partnerTemplate = '<div class="online-partner"> <div class="online-type" data-ebassistant="read"> <span>在线试读：</span> <div class="online-read-or-audio"> <a class="impression_track_mod_buyinfo" target="_blank" href="{templateUrl}" one-link-mark="yes"> <img src="https://s1.ax1x.com/2020/10/06/0UsLZj.png" width="16" height="16"> <span>图灵社区</span> </a> </div></div> </div>';
                         $("#link-report").after(partnerTemplate.replace("{templateUrl}", turingUrl));
                     }
@@ -88,6 +96,7 @@
         });
         return;
     }
+
 
     function queryXimalaya(title, author) {
         GM_xmlhttpRequest({
@@ -122,7 +131,7 @@
     function queryDuokan(isbn) {
             GM_xmlhttpRequest({
             method: "GET",
-            url: "http://106.52.138.60:8081/duokan?isbn=" + isbn,
+            url: "http://127.0.0.1:8081/duokan?isbn=" + isbn,
             headers: {
                 'User-agent': window.navigator.userAgent,
             },
@@ -133,9 +142,12 @@
                     var duokanUrl = result.data.url;
                     var duokanPrice = result.data.price;
                     var partnerTemplate = '';
-                    if ($(".online-partner").length) {
+                    if ($('.online-type[data-ebassistant="read"]').length) {
                         partnerTemplate = '<div class="online-read-or-audio"> <a class="impression_track_mod_buyinfo" target="_blank" href="{templateUrl}"> <img src="https://s1.ax1x.com/2020/10/08/0wylUH.png" width="16" height="16"> <span>多看阅读</span> </a> </div>';
                         $('.online-type[data-ebassistant="read"]').append(partnerTemplate.replace("{templateUrl}", duokanUrl));
+                    } else if ($('.online-type[data-ebassistant="audio"]').length) {
+                        partnerTemplate = '<div class="online-type" data-ebassistant="read"> <span>在线试读：</span> <div class="online-read-or-audio"> <a class="impression_track_mod_buyinfo" target="_blank" href="{templateUrl}" one-link-mark="yes"> <img src="https://s1.ax1x.com/2020/10/08/0wylUH.png" width="16" height="16"> <span>多看阅读</span> </a> </div></div>';
+                        $('.online-type[data-ebassistant="audio"]').before(partnerTemplate.replace("{templateUrl}", duokanUrl));
                     } else {
                         partnerTemplate = '<div class="online-partner"> <div class="online-type" data-ebassistant="read"> <span>在线试读：</span> <div class="online-read-or-audio"> <a class="impression_track_mod_buyinfo" target="_blank" href="{templateUrl}" one-link-mark="yes"> <img src="https://s1.ax1x.com/2020/10/08/0wylUH.png" width="16" height="16"> <span>多看阅读</span> </a> </div></div> </div>';
                         $("#link-report").after(partnerTemplate.replace("{templateUrl}", duokanUrl));
