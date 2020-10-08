@@ -5,10 +5,10 @@ eBooks Assistant for douban.com
 
 ## Features
 
--  添加亚马逊 Kindle在线试读链接、购买链接
--  添加图灵社区在线试读链接、购买链接
--  添加喜马拉雅在线试听链接
--  添加多看阅读在线试读链接、购买链接
+-  添加亚马逊 Kindle ([amazon.cn](https://www.amazon.cn/)) 在线试读链接、购买链接
+-  添加图灵社区 ([ituring.com.cn](https://www.ituring.com.cn/)) 在线试读链接、购买链接
+-  添加喜马拉雅 ([ximalaya.com](https://www.ximalaya.com/)) 在线试听链接
+-  添加多看阅读 ([duokan.com](http://www.duokan.com/)) 在线试读链接、购买链接
 
 ![](https://raw.githubusercontent.com/caspartse/eBooksAssistant/main/screenshots/sc001.jpeg)
 
