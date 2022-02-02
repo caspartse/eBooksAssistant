@@ -51,7 +51,7 @@ def amazon():
             return resp
 
         # 存储 token，用于后续接收客户端结果时校验身份
-        rd.set(token, isbn, ex=30)
+        rd.set(token, isbn, ex=60)
 
         # 查询已存在的结果
         cached_key = 'amazon_' + isbn
@@ -132,7 +132,7 @@ def amazon_update():
             ku = False
 
         # 校验 token，以及所有参数
-        if (rd.get(token) != isbn) or (not all([isbn, price, url, ku])):
+        if (rd.get(token) != isbn) or (not all([isbn, price, url])):
             return
 
         cached_key = 'amazon_' + isbn
@@ -171,7 +171,7 @@ def amazon_feekback():
             ku = False
 
         # 校验 token，以及所有参数
-        if (rd.get(token) != isbn) or (not all([isbn, price, ku])):
+        if (rd.get(token) != isbn) or (not all([isbn, price])):
             return
 
         cached_key = 'amazon_' + isbn
@@ -404,7 +404,7 @@ def ximalaya():
             albumTitle = doc['title']
             nickname = doc['nickname'] # 主播
             intro = doc['intro']
-            playCount = doc['playCount'] + 1 # 播放量, 加1是为了避免播放量为0时致 math.log10(playCount) 报错
+            playCount = doc['playCount'] + 1 # 播放量, 加1是为了避免播放量为0时导致 math.log10(playCount) 报错
             isPaid = doc['isPaid'] # 是否付费
             isFinished = doc['isFinished'] # 是否完本
 
