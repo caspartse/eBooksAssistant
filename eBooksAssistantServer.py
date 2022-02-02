@@ -1,216 +1,545 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding:utf-8 -*-
-from bottle import *
-import psycopg2
-import pylibmc
+import traceback
+from utilities import *
+from bottle import Bottle, request, response, run
+from uuid import uuid4
+import re
 import simplejson as json
-import requests
-import urllib.parse
+from thefuzz import fuzz
+from random import choice
+from headlessBrowser import headlessBrowser
+import redis
+import arrow
+import math
 
 
 app = Bottle()
-mc = pylibmc.Client(['localhost:11211'])
+rd_pool = redis.ConnectionPool(host='127.0.0.1', port=6379, decode_responses=True)
+rd = redis.Redis(connection_pool=rd_pool)
 
 
-def queryDB():
-    conn = psycopg2.connect(dbname="turing", user="user",
-                            host="localhost", password="password")
-    cur = conn.cursor()
-    cur.execute("SELECT isbn, price, url FROM Ebooks WHERE forsale = 1;")
-    records = cur.fetchall()
-    conn.commit()
-    conn.close()
-    return records
-
-
-def loadData():
-    records = queryDB()
-    for item in records:
-        isbn = item[0]
-        price = item[1]
-        url = item[2]
-        book = {
-            'isbn': isbn,
-            'price': str(price),
-            'url': url
-        }
-        mc.set(isbn, book)
-    print('done.')
-    return
-
-
-@app.route('/turing')
-def turing():
+@app.route('/amazon', method='GET')
+def amazon():
     response.set_header('Content-Type', 'application/json; charset=UTF-8')
     response.add_header('Cache-Control', 'no-cache; must-revalidate')
     response.add_header('Expires', '-1')
 
-    book = {}
-    errmsg = ''
+    token = uuid4().hex
     result = {
-        'data': book,
-        'errmsg': errmsg
-    }
-
-    isbn = str(request.query.isbn) or ''
-    if not isbn:
-        result['errmsg'] = 'isbn not given.'
-    else:
-        try:
-            book = mc.get(isbn)
-            result['data'] = book
-        except:
-            result['errmsg'] = 'record not found.'
-
-    resp = json.dumps(result)
-    return resp
-
-
-@app.route('/ximalaya')
-def ximalaya():
-    response.set_header('Content-Type', 'application/json; charset=UTF-8')
-    response.add_header('Cache-Control', 'no-cache; must-revalidate')
-    response.add_header('Expires', '-1')
-
-    album = {}
-    errmsg = ''
-    result = {
-        'data': album,
-        'errmsg': errmsg
+        'data': {},
+        'errmsg': '',
+        'vendor': 'amazon',
+        'token': token,
+        'ematch': True,
+        'ext': ''
     }
 
     try:
-        title = str(request.query.title) or ''
-        author = str(request.query.author) or ''
-        if not all([title, author]):
-            result['errmsg'] = 'title or author not given.'
-            resp = json.dumps(result)
-            return resp  # 没有标题，返回
+        isbn = request.query.isbn or ''
+        isbn = str(isbn).strip()
+        title = request.query.title or ''
+        subtitle = request.query.subtitle or ''
+        author = request.query.author or ''
+        translator = request.query.translator or ''
+        publisher = request.query.publisher or ''
 
-        title = urllib.parse.quote_plus(title)
-        headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:81.0) Gecko/20100101 Firefox/81.0',
-            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-            'Accept-Language': 'en-US,en;q=0.5',
-            'Accept-Encoding': 'gzip, deflate, br',
-            'Referer': 'https://www.ximalaya.com/',
-            'DNT': '1',
-            'Connection': 'keep-alive',
-            'Pragma': 'no-cache',
-            'Cache-Control': 'no-cache'
-        }
-        sess = requests.Session()
-        sess.headers.update(headers)
-        url = 'https://www.ximalaya.com/revision/search/main'
+        # 没有ISBN或标题，返回错误
+        if not all([isbn, title]):
+            result['errmsg'] = 'isbn or title not given.'
+            resp = json.dumps(result)
+            return resp
+
+        # 存储 token，用于后续接收客户端结果时校验身份
+        rd.set(token, isbn, ex=30)
+
+        # 查询已存在的结果
+        cached_key = 'amazon_' + isbn
+        cached_data = rd.get(cached_key)
+        if cached_data:
+            try:
+                book = json.loads(cached_data)
+
+                # 历史数据原因，这里做一下修正
+                book['title'] = title
+                bookUrl = book['url']
+                bookUrl = bookUrl.replace(isbn, title)
+                bookUrl = bookUrl.replace('&amp;', '&')
+                if 'keywords' not in bookUrl:
+                    bookUrl = f'{bookUrl}ref=sr_1_1?__mk_zh_CN=亚马逊网站&keywords={title}&s=digital-text&sr=1-1'
+                book['url'] = bookUrl
+                # update 修正后的结果
+                rd.set(cached_key, json.dumps(book), ex=1209600)
+
+                result['data'] = book
+                result['ext'] = 'r'
+                resp = json.dumps(result)
+                return resp
+            except:
+                pass
+
+        # 出于对抗反爬考虑：将请求解析部分变成一个独立服务（方便在多台服务器上部署）
+        urls = [
+            'http://127.0.0.1:8083/_amazon',
+        ]
         params = {
-            'core': 'album',
-            'kw': '%s' % (title),
-            'page': '1',
-            'spellchecker': 'true',
-            'rows': '20',
-            'condition': 'play',
-            'device': 'iPhone',
-            'fq': 'category_id:3,is_paid:true',
-            'paidFilter': 'true'
+            'isbn': isbn,
+            'title': title,
+            'subtitle': subtitle,
+            'author': author,
+            'translator': translator,
+            'publisher': publisher
         }
-        resp = sess.get(url, params=params, timeout=100)
-        content = resp.json()
-        total = int(content['data']['album']['total'])
+        resp = requests.get(choice(urls), params=params, timeout=100)
+        book = resp.json()
 
-        if total == 0:
-            result['errmsg'] = 'album not found.'
+        if book:
+            result['data'] = book
+            # 保存结果到 Redis
+            rd.set(cached_key, json.dumps(result['data']), ex=1209600)
+        # 没有结果，返回错误
+        else:
+            result['errmsg'] = 'book not found.'
             resp = json.dumps(result)
-            return resp  # 没有结果，返回
+            return resp
 
-        matchWords = re.sub(
-            r'•|·|▪|\.|\-|\[|\]| |\/|\||\(|\)|（|）|<|>|【|】|\?|？', '\t', author).split('\t')
-        matchWords.sort(key=len, reverse=True)
-        for doc in content['data']['album']['docs']:
-            album_url = doc['url']
-            album_url = 'https://www.ximalaya.com' + album_url
-            title = doc['title']
-            nickname = doc['nickname']
-            album = {
-                'url': album_url,
-                'title': title,
-                'nickname': nickname
-            }
-            result['data'] = album
-            intro = doc['intro']
-            loopFlag = True
-            for wd in matchWords:
-                if len(wd) > 1 and (wd in intro):
-                    loopFlag = False
-            if not loopFlag:
-                break
     except:
+        traceback.print_exc()
         result['errmsg'] = 'unknow error.'
 
     resp = json.dumps(result)
     return resp
 
 
-@app.route('/amazon')
-def amazon():
-    pass
+# 接收来自客户端的抓取结果
+@app.route('/amazon/update', method='POST')
+def amazon_update():
+    try:
+        token = request.forms.get('token')
+        isbn = request.forms.get('isbn')
+        isbn = str(isbn).strip()
+        title = request.forms.get('title')
+        title = title.encode('ISO-8859-1').decode('utf-8', 'ignore')
+        price = request.forms.get('price')
+        price = str('{:.2f}'.format(float(price)))
+        url = request.forms.get('url')
+        url = re.search(r'(https:\/\/www\.amazon\.cn\/dp\/[0-9a-zA-Z]+\/)', url).group(1)
+        url = f'{url}ref=sr_1_1?__mk_zh_CN=亚马逊网站&keywords={title}&s=digital-text&sr=1-1'
+        ku = request.forms.get('ku')
+        try:
+            ku = json.loads(ku.lower())
+        except:
+            ku = False
+
+        # 校验 token，以及所有参数
+        if (rd.get(token) != isbn) or (not all([isbn, price, url, ku])):
+            return
+
+        cached_key = 'amazon_' + isbn
+
+        book = {
+            'isbn': isbn,
+            'title': title,
+            'price': price,
+            'url': url,
+            'ku': ku,
+            'vendor': 'amazon',
+            'update_time': arrow.now().format('YYYY-MM-DD')
+        }
+        rd.set(cached_key, json.dumps(book), ex=1209600)
+        rd.delete(token)
+
+    except:
+        traceback.print_exc()
+
+    return
 
 
-@app.route('/duokan')
+# 接收来自客户端的反馈结果
+@app.route('/amazon/feekback', method='POST')
+def amazon_feekback():
+    try:
+        token = request.forms.get('token')
+        isbn = request.forms.get('isbn')
+        isbn = str(isbn).strip()
+        price = request.forms.get('price')
+        price = str('{:.2f}'.format(float(price)))
+        ku = request.forms.get('ku')
+        try:
+            ku = json.loads(ku.lower())
+        except:
+            ku = False
+
+        # 校验 token，以及所有参数
+        if (rd.get(token) != isbn) or (not all([isbn, price, ku])):
+            return
+
+        cached_key = 'amazon_' + isbn
+        cached_data = rd.get(cached_key)
+        book = json.loads(cached_data)
+        book.update(
+            {
+                'price': price,
+                'ku': ku,
+                'update_time': arrow.now().format('YYYY-MM-DD')
+            }
+        )
+        rd.set(cached_key, json.dumps(book), ex=1209600)
+        rd.delete(token)
+
+    except:
+        traceback.print_exc()
+
+    return
+
+
+
+@app.route('/weread', method='GET')
+def weread():
+    response.set_header('Content-Type', 'application/json; charset=UTF-8')
+    response.add_header('Cache-Control', 'no-cache; must-revalidate')
+    response.add_header('Expires', '-1')
+
+    result = {
+        'data': {},
+        'errmsg': '',
+        'vendor': 'weread',
+        'token': '',
+        'ematch': True,
+        'ext': ''
+    }
+
+    try:
+        isbn = request.query.isbn or ''
+        isbn = str(isbn).strip()
+        title = request.query.title or ''
+        subtitle = request.query.subtitle or ''
+        author = request.query.author or ''
+
+        # 没有ISBN或标题，返回错误
+        if not all([isbn, title]):
+            result['errmsg'] = 'isbn or title not given.'
+            resp = json.dumps(result)
+            return resp
+
+        # 查询已存在的结果
+        cached_key = 'weread_' + isbn
+        cached_data = rd.get(cached_key)
+        if cached_data:
+            try:
+                book = json.loads(cached_data)
+                result['data'] = book
+                result['ext'] = 'r'
+                resp = json.dumps(result)
+                return resp
+            except:
+                pass
+
+        sess = genNewSession()
+
+        # 伪装成正常用户访问
+        sess.get('https://weread.qq.com/')
+        sess.headers.update({'Referer': 'https://weread.qq.com/'})
+
+        bookList = []
+
+        # 优先搜索 ISBN（但 ISBN 不是微信读书的图书必备项，往往没结果）
+        url = f'https://weread.qq.com/web/search/global?keyword={isbn}'
+        resp = sess.get(url, timeout=100)
+        content = resp.json()
+        totalCount_isbn = content.get('books') or []
+
+        if totalCount_isbn:
+            items = wereadResultHandle(content['books'][:5], isbn, title, author, 1)
+            bookList.extend(items)
+        # ISBN 没有搜索到，使用其他信息搜索
+        else:
+            result['ematch'] = False
+
+            # 微信读书启用全文搜索，结果非常不精准，所以同时增加两类关键词的搜索
+
+            # 用标题+副标题搜索
+            if subtitle:
+                keyword = f'{title}+{subtitle}'
+                url = f'https://weread.qq.com/web/search/global?keyword={keyword}'
+                resp = sess.get(url, timeout=100)
+                content = resp.json()
+                totalCount_subtitle = content.get('books') or []
+                if totalCount_subtitle:
+                    items = wereadResultHandle(content['books'][:5], isbn, title, author, 2)
+                    bookList.extend(items)
+
+            # 用标题+作者搜索
+            _author = '+'.join(genWordList(author))
+            keyword = f'{title}+{_author}'
+            url = f'https://weread.qq.com/web/search/global?keyword={keyword}'
+            resp = sess.get(url, timeout=100)
+            content = resp.json()
+            totalCount_author = content.get('books') or []
+            if totalCount_author:
+                items = wereadResultHandle(content['books'][:5], isbn, title, author, 3)
+                bookList.extend(items)
+
+        # 没有搜索到结果，返回错误
+        if not bookList:
+            result['errmsg'] = 'book not found.'
+            resp = json.dumps(result)
+            return resp
+
+        # 按分数排序
+        bookList.sort(key=lambda a: a['score'], reverse=True)
+
+        # print(bookList)
+
+        book = bookList[0]
+
+        # 微信读书搜索结果没有直接返回 URL（URL 是通过解密得到的，暂时破解不了）
+        # 这里使用 docker + selenium 模拟查询，根据上面步骤中得到的结果位置、标识符，以及查询类型，获取 URL
+        bookUrl = headlessBrowser(book)
+
+        # 查找URL失败，返回错误
+        if not bookUrl:
+            result['errmsg'] = 'bookUrl failed.'
+            resp = json.dumps(result)
+            return resp
+
+        book = {
+            'isbn': isbn,
+            'title': book['title'],
+            'price': book['price'],
+            'url': 'https://weread.qq.com{}'.format(bookUrl),
+            'vendor': 'weread',
+            'update_time': arrow.now().format('YYYY-MM-DD HH:mm:ss')
+        }
+        result['data'] = book
+
+        # 保存结果到 Redis
+        rd.set(cached_key, json.dumps(result['data']), ex=1209600)
+
+    except:
+        traceback.print_exc()
+        result['errmsg'] = 'unknow error.'
+
+    resp = json.dumps(result)
+    return resp
+
+
+@app.route('/ximalaya', method='GET')
+def ximalaya():
+    response.set_header('Content-Type', 'application/json; charset=UTF-8')
+    response.add_header('Cache-Control', 'no-cache; must-revalidate')
+    response.add_header('Expires', '-1')
+
+    result = {
+        'data': {},
+        'errmsg': '',
+        'vendor': 'ximalaya',
+        'token': '',
+        'ematch': False,
+        'ext': ''
+    }
+
+    try:
+        isbn = request.query.isbn or ''
+        isbn = str(isbn).strip()
+        title = request.query.title or ''
+        author = request.query.author or ''
+
+        # 没有标题或作者，返回错误
+        if not all([title, author]):
+            result['errmsg'] = 'title or author not given.'
+            resp = json.dumps(result)
+            return resp
+
+        # 查询已存在的结果
+        cached_key = 'ximalaya_' + isbn
+        cached_data = rd.get(cached_key)
+        if cached_data:
+            try:
+                book = json.loads(cached_data)
+                result['data'] = book
+                result['ext'] = 'r'
+                resp = json.dumps(result)
+                return resp
+            except:
+                pass
+
+        sess = genNewSession()
+
+        # 伪装成正常用户访问
+        sess.get('https://www.ximalaya.com/')
+        sess.headers.update({'Referer': 'https://www.ximalaya.com/'})
+
+
+        url = 'https://www.ximalaya.com/revision/search/main'
+        params = {
+            'core': 'album',
+            'kw': title,
+            'page': '1',
+            'spellchecker': 'true',
+            'rows': '20',
+            'condition': 'relation',
+            'device': 'iPhone',
+            'fq': '',
+            'paidFilter': 'false'
+        }
+        resp = sess.get(url, params=params, timeout=100)
+        content = resp.json()
+        total = int(content['data']['album']['total'])
+
+        # 没有找到相关专辑，返回错误
+        if total == 0:
+            result['errmsg'] = 'album not found.'
+            resp = json.dumps(result)
+            return resp
+
+        # 作者信息转换成关键词列表
+        matchWords = genWordList(author)
+
+        albumList = []
+
+        docs = content['data']['album']['docs'][:10]
+        for idx, doc in enumerate(docs):
+            albumUrl = 'https://www.ximalaya.com{}'.format(doc['url'])
+            albumTitle = doc['title']
+            nickname = doc['nickname'] # 主播
+            intro = doc['intro']
+            playCount = doc['playCount'] + 1 # 播放量, 加1是为了避免播放量为0时致 math.log10(playCount) 报错
+            isPaid = doc['isPaid'] # 是否付费
+            isFinished = doc['isFinished'] # 是否完本
+
+            # 喜马拉雅有许多相关度很低的内容，所以需要做相似度计算
+            titleRatio = fuzz.partial_ratio(title, albumTitle)
+
+            # 统计作者信息关键词出现的次数
+            authorMatchCount = 0
+            for w in matchWords:
+                authorMatchCount = authorMatchCount + len(re.findall(fr'{w}', intro))
+            # 设计一个权重分数
+            score = (titleRatio / 100) * 0.50 \
+            + adjustNum((10 - idx), 10) * 0.15 \
+            + adjustNum(math.log10(playCount), 5.00) * 0.15 \
+            + adjustNum(authorMatchCount, 10) * 0.10 \
+            + adjustNum(isFinished, 2) * 0.05 \
+            + int(isPaid) * 0.05
+
+            if score >= 0.75:
+                album = {
+                    'isbn': isbn,
+                    'title': albumTitle,
+                    'nickname': nickname,
+                    'url': albumUrl,
+                    'score': score,
+                    'vendor': 'ximalaya',
+                    'update_time': arrow.now().format('YYYY-MM-DD HH:mm:ss')
+                }
+                albumList.append(album)
+
+        # 结果不匹配，返回错误
+        if not albumList:
+            result['errmsg'] = 'not match result.'
+            resp = json.dumps(result)
+            return resp
+
+        # 按分数排序
+        albumList.sort(key=lambda a: a['score'], reverse=True)
+        # print(albumList)
+        result['data'] = albumList[0]
+
+        # 保存结果到 Redis
+        rd.set(cached_key, json.dumps(result['data']), ex=1209600)
+
+    except:
+        traceback.print_exc()
+        result['errmsg'] = 'unknow error.'
+
+    resp = json.dumps(result)
+    return resp
+
+
+# 多看阅读，只使用 ISBN 查询，返回精确的书籍信息
+@app.route('/duokan', method='GET')
 def duokan():
     response.set_header('Content-Type', 'application/json; charset=UTF-8')
     response.add_header('Cache-Control', 'no-cache; must-revalidate')
     response.add_header('Expires', '-1')
 
-    book = {}
-    errmsg = ''
     result = {
-        'data': book,
-        'errmsg': errmsg
+        'data': {},
+        'errmsg': '',
+        'vendor': 'duokan',
+        'token': '',
+        'ematch': True,
+        'ext': ''
     }
 
     try:
-        isbn = str(request.query.isbn) or ''
+        isbn = request.query.isbn or ''
+        isbn = str(isbn).strip()
+
+        # 没有ISBN，返回错误
         if not isbn:
             result['errmsg'] = 'isbn not given.'
             resp = json.dumps(result)
-            return resp  # 没有ISBN，返回
+            return resp
 
-        headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:81.0) Gecko/20100101 Firefox/81.0',
-            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-            'Accept-Language': 'en-US,en;q=0.5',
-            'Accept-Encoding': 'gzip, deflate',
-            'DNT': '1',
-            'Connection': 'keep-alive',
-            'Referer': 'http://www.duokan.com/',
-            'Upgrade-Insecure-Requests': '1',
-            'Pragma': 'no-cache',
-            'Cache-Control': 'no-cache'
-        }
-        sess = requests.Session()
-        sess.headers.update(headers)
-        url = 'http://www.duokan.com/search/%s/1' % (isbn)
+        # 查询已存在的结果
+        cached_key = 'duokan_' + isbn
+        cached_data = rd.get(cached_key)
+        if cached_data:
+            try:
+                book = json.loads(cached_data)
+                result['data'] = book
+                result['ext'] = 'r'
+                resp = json.dumps(result)
+                return resp
+            except:
+                pass
+
+        sess = genNewSession()
+
+        # 伪装成正常用户访问
+        sess.get('https://www.duokan.com/pc/')
+        sess.headers.update({'Referer': 'https://www.duokan.com/pc/'})
+
+        # 查询书籍信息
+        url = f'https://www.duokan.com/target/search/web?s={isbn}&p=1'
         resp = sess.get(url, timeout=100)
-        content = resp.text
+        content = resp.json()
+        books = content.get('books', [])
 
-        pattern = r'<textarea name="json" id="book_list">([\s\S]+?)</textarea>'
-        items = re.search(pattern, content).group(1).strip()
-        print(repr(items))
-        pattern = r'price : \'([0-9\.]+)\''
-        price = re.findall(pattern, items)[0]
-        pattern = r'url : \'(/book/\d+)\''
-        book_url = re.findall(pattern, items)[0]
+        # 没有结果，返回错误
+        if not books:
+            result['errmsg'] = 'book not found.'
+            resp = json.dumps(result)
+            return resp
+
+        book = books[0]
+        title = book['title']
+        price = book['price']
+        price = str('{:.2f}'.format(float(price)))
+        bookUrl = 'https://www.duokan.com/pc/detail/{}'.format(book['book_id'])
+
+        # 没有结果，返回错误
         if not all([price, url]):
             result['errmsg'] = 'book not found.'
             resp = json.dumps(result)
-            return resp  # 没有结果，返回
+            return resp
+
         book = {
             'isbn': isbn,
+            'title': title,
             'price': price,
-            'url': 'http://www.duokan.com' + book_url
+            'url': bookUrl,
+            'vendor': 'duokan',
+            'update_time': arrow.now().format('YYYY-MM-DD HH:mm:ss')
         }
         result['data'] = book
+        # 保存结果到 Redis
+        rd.set(cached_key, json.dumps(result['data']), ex=1209600)
+
     except:
+        traceback.print_exc()
         result['errmsg'] = 'unknow error.'
 
     resp = json.dumps(result)
@@ -218,6 +547,4 @@ def duokan():
 
 
 if __name__ == '__main__':
-    loadData()
-    run(app, server='paste', host='localhost',
-        port=8081, debug=True, reloader=True)
+    run(app, server='paste', host='127.0.0.1', port=8082, debug=True, reloader=True)
