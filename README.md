@@ -68,6 +68,15 @@ $ docker run -d -p 4444:4444 --shm-size="2g" selenium/standalone-chrome:4.1.2-20
 ```
 
 - docker-selenium 自定义配置请参考：[https://github.com/SeleniumHQ/docker-selenium](https://github.com/SeleniumHQ/docker-selenium)
+- 容器配置
+
+```bash
+$ docker ps -a # 查看容器 ID
+$ docker update --restart unless-stopped xxxxxx # 更新设置
+```
+
+
+![](https://raw.githubusercontent.com/caspartse/eBooksAssistant/main/images/screenshots-03.png)
 
 #### 3. 安装 Python 依赖库
 
