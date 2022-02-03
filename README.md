@@ -53,6 +53,8 @@ $ sudo systemctl enable redis-server.service
 - 可选：可以使用 [redis-dump](https://github.com/delano/redis-dump) 的 `redis-load` 命令加载已存储的电子书数据。
 
 ```bash
+$ sudo apt-get install ruby ruby-dev
+$ gem install redis-dump
 $ < ./data/db_full.json redis-load
 ```
 
@@ -92,10 +94,15 @@ $ sudo service amazon restart
 
 #### 5. 修改服务地址
 
-- 服务器端配置成功后，修改客户端（eBooksAssistant.user.js）中的服务器地址即可。
+- 服务器端配置成功后，修改客户端（eBooksAssistant.user.js）中的服务器地址即可（**有两处**）。
+
 
 ```javascript
-var version = "0.15.0";
+// @connect      xxx.xxx.xxx.xxx
+```
+
+
+```javascript
 // 如果自己部署服务，这里修改成你的服务器地址
 var domain = "http://xxx.xxx.xxx.xxx:8081";
 ```
