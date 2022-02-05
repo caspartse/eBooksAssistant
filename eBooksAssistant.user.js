@@ -2,7 +2,7 @@
 // @name         eBooks Assistant
 // @name:zh-CN   豆瓣读书助手
 // @namespace    https://github.com/caspartse/eBooksAssistant
-// @version      0.15.0
+// @version      0.15.1
 // @description  eBooks Assistant for douban.com
 // @description:zh-CN 为豆瓣读书页面添加亚马逊Kindle、微信读书、多看阅读、喜马拉雅等直达链接
 // @author       Caspar Tse
@@ -18,7 +18,7 @@
 // ==/UserScript==
 
 (function() {
-    var version = "0.15.0";
+    var version = "0.15.1";
     // 如果自己部署服务，这里修改成你的服务器地址
     var domain = "http://8.210.230.166:8081";
     // for debug
@@ -120,7 +120,7 @@
                 GM_xmlhttpRequest({
                     method: "POST",
                     url: `${domain}/amazon/feekback?isbn=${isbn}`,
-                    data: `isbn${isbn}&price=${bookPrice}&ku=${amazonKu}&token=${token}&version=${version}`,
+                    data: `isbn=${isbn}&price=${bookPrice}&ku=${amazonKu}&token=${token}&version=${version}`,
                     headers: {
                         "Content-Type": "application/x-www-form-urlencoded"
                     }
@@ -356,8 +356,13 @@
         console.log(e);
     }
     console.log(translator);
-    var regexPublisher = /<span class="pl">\s*出版社:?<\/span>\s*:?\s*([\s\S]+?)<br\/?>/gi;
-    var publisher = regexPublisher.exec(document.documentElement.innerHTML.replace(/&nbsp;/gi, " "))[1].trim();
+    var publisher = "";
+    try {
+        var regexPublisher = /<span class="pl">\s*出版社:?<\/span>\s*:?\s*([\s\S]+?)<br\/?>/gi;
+        publisher = regexPublisher.exec(document.documentElement.innerHTML.replace(/&nbsp;/gi, " "))[1].trim();
+    } catch(e) {
+        console.log(e);
+    }
     console.log(publisher);
 
     queryWeread_Remote(isbn, title, subtitle, author, translator, publisher);
