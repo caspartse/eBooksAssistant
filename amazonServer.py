@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding:utf-8 -*-
+import traceback
 from bottle import Bottle, request, response, run
 import requests
 import simplejson as json
@@ -47,7 +48,7 @@ def fetchContent(keyword):
         'url': 'search-alias=digital-text',
         'field-keywords': keyword
     }
-    resp = sess.get(url, params=params, timeout=100)
+    resp = sess.get(url, params=params, timeout=200)
     content = resp.text
     return content
 
@@ -104,8 +105,12 @@ def amazon():
         bookUrl = bookUrl.replace(str(isbn), title)
         bookUrl = bookUrl.replace('&amp;', '&')
 
-        pattern = r'<span id="kindle-price"[^>]+>\s*[￥|¥]([0-9\.]+)\s*<\/span>'
-        price = re.findall(pattern, content)[0]
+        try:
+            pattern = r'class="a-offscreen"[^>]*>\s*[￥|¥]([0-9\.]+)\s*<\/span>'
+            price = re.findall(pattern, content)[0]
+        except:
+            pattern = r'id="kindle-price"[^>]*>\s*[￥|¥]([0-9\.]+)\s*<\/span>'
+            price = re.findall(pattern, content)[0]
         price = str('{:.2f}'.format(float(price)))
 
         pattern = r'(免费借阅)|(免费阅读此书)|(涵盖在您的会员资格中)|(或者[￥¥][0-9\.]+购买)'
@@ -130,11 +135,13 @@ def amazon():
         resp = json.dumps(book)
         return resp
 
-    except Exception as e:
-        print(e)
+    except:
+        traceback.print_exc()
         resp = json.dumps(book)
         return resp
 
 
 if __name__ == '__main__':
     run(app, server='paste', host='127.0.0.1', port=8083, debug=True, reloader=True)
+
+    # curl 'http://127.0.0.1:8083/_amazon?isbn=9787559610782&title=%E5%AD%98%E5%9C%A8%E4%B8%BB%E4%B9%89%E5%92%96%E5%95%A1%E9%A6%86'

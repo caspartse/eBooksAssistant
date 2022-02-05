@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding:utf-8 -*-
+import traceback
 from utilities import *
 import re
 from selenium import webdriver
@@ -55,8 +56,8 @@ def headlessBrowser(book):
 
         driver.quit()
 
-    except Exception as e:
-        print(e)
+    except:
+        traceback.print_exc()
         pass
 
     try:
