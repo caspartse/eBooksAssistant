@@ -9,6 +9,9 @@ from time import sleep
 import arrow
 
 
+requests.packages.urllib3.disable_warnings()
+
+
 app = Bottle()
 
 

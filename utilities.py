@@ -3,6 +3,10 @@
 import requests
 import re
 from thefuzz import fuzz
+import js2py
+
+
+requests.packages.urllib3.disable_warnings()
 
 
 def genNewSession():
@@ -72,6 +76,14 @@ def wereadResultHandle(books, isbn, title, author, queryKind):
         }
         itemList.append(item)
     return itemList
+
+
+def genPvid():
+    js_fnc = '''
+    function(){var a=(new Date).getTime();var b="xxxxxxxxxxxx4xxxyxxxxxxxxxxxxxxx".replace(/[xy]/g,function(b){var c=(a+16*Math.random())%16|0;return a=Math.floor(a/16),("x"==b?c:3&c|8).toString(16)});return b}
+    '''
+    pvid = js2py.eval_js(js_fnc)()
+    return pvid
 
 
 if __name__ == '__main__':

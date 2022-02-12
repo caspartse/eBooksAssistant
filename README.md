@@ -1,7 +1,7 @@
 # 豆瓣读书助手
 eBooks Assistant for douban.com .
 
-为豆瓣读书页面添加亚马逊Kindle、微信读书、多看阅读、喜马拉雅等直达链接。
+为豆瓣读书页面添加亚马逊Kindle、微信读书、多看阅读、京东读书、喜马拉雅等直达链接。
 
 
 
@@ -10,7 +10,9 @@ eBooks Assistant for douban.com .
 -  添加亚马逊 Kindle ([amazon.cn](https://www.amazon.cn/)) 在线试读链接、购买链接(可标识出 Kindle Unlimited 电子书)；
 -  添加微信读书 ([weread.qq.com](https://weread.qq.com/)) 在线试读链接、购买链接；
 -  添加多看阅读 ([duokan.com](http://www.duokan.com/)) 在线试读链接、购买链接；
+-  添加京东读书 ([e.jd.com](https://e.jd.com/)) 在线试读链接、购买链接；
 -  添加喜马拉雅 ([ximalaya.com](https://www.ximalaya.com/)) 在线试听链接。
+
 
 ![](https://raw.githubusercontent.com/caspartse/eBooksAssistant/main/images/screenshots-01.jpg)
 
@@ -53,7 +55,7 @@ $ sudo systemctl enable redis-server.service
 - 可选：可以使用 [redis-dump](https://github.com/delano/redis-dump) 的 `redis-load` 命令加载已存储的电子书数据。
 
 ```bash
-$ sudo apt-get install ruby ruby-dev
+$ sudo apt-get install ruby ruby-dev ibc6-dev
 $ gem install redis-dump
 $ < ./data/db_full.json redis-load
 ```
@@ -81,6 +83,7 @@ $ docker update --restart unless-stopped xxxxxx # 更新设置
 #### 3. 安装 Python 依赖库
 
 ```bash
+$ sudo apt-get install python3-dev
 $ pip3 install -r ./requirements.txt
 ```
 

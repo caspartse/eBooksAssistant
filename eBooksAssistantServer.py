@@ -14,6 +14,9 @@ import arrow
 import math
 
 
+requests.packages.urllib3.disable_warnings()
+
+
 app = Bottle()
 rd_pool = redis.ConnectionPool(host='127.0.0.1', port=6379, decode_responses=True)
 rd = redis.Redis(connection_pool=rd_pool)
@@ -156,8 +159,8 @@ def amazon_update():
 
 
 # 接收来自客户端的反馈结果
-@app.route('/amazon/feekback', method='POST')
-def amazon_feekback():
+@app.route('/amazon/feedback', method='POST')
+def amazon_feedback():
     try:
         token = request.forms.get('token')
         isbn = request.forms.get('isbn')
@@ -291,11 +294,11 @@ def weread():
 
         # print(bookList)
 
-        book = bookList[0]
+        _book = bookList[0]
 
         # 微信读书搜索结果没有直接返回 URL（URL 是通过解密得到的，暂时破解不了）
         # 这里使用 docker + selenium 模拟查询，根据上面步骤中得到的结果位置、标识符，以及查询类型，获取 URL
-        bookUrl = headlessBrowser(book)
+        bookUrl = headlessBrowser(_book)
 
         # 查找URL失败，返回错误
         if not bookUrl:
@@ -305,8 +308,8 @@ def weread():
 
         book = {
             'isbn': isbn,
-            'title': book['title'],
-            'price': book['price'],
+            'title': _book['title'],
+            'price': _book['price'],
             'url': 'https://weread.qq.com{}'.format(bookUrl),
             'vendor': 'weread',
             'update_time': arrow.now().format('YYYY-MM-DD HH:mm:ss')
@@ -532,6 +535,97 @@ def duokan():
             'price': price,
             'url': bookUrl,
             'vendor': 'duokan',
+            'update_time': arrow.now().format('YYYY-MM-DD HH:mm:ss')
+        }
+        result['data'] = book
+        # 保存结果到 Redis
+        rd.set(cached_key, json.dumps(result['data']), ex=1209600)
+
+    except:
+        traceback.print_exc()
+        result['errmsg'] = 'unknow error.'
+
+    resp = json.dumps(result)
+    return resp
+
+# 京东读书，只使用 ISBN 查询，返回精确的书籍信息
+@app.route('/jd', method='GET')
+def jd():
+    response.set_header('Content-Type', 'application/json; charset=UTF-8')
+    response.add_header('Cache-Control', 'no-cache; must-revalidate')
+    response.add_header('Expires', '-1')
+
+    result = {
+        'data': {},
+        'errmsg': '',
+        'vendor': 'jd',
+        'token': '',
+        'ematch': True,
+        'ext': ''
+    }
+
+    try:
+        isbn = request.query.isbn or ''
+        isbn = str(isbn).strip()
+        title = request.query.title or ''
+
+        # 没有ISBN，返回错误
+        if not isbn:
+            result['errmsg'] = 'isbn not given.'
+            resp = json.dumps(result)
+            return resp
+
+        # 查询已存在的结果
+        cached_key = 'jd_' + isbn
+        cached_data = rd.get(cached_key)
+        if cached_data:
+            try:
+                book = json.loads(cached_data)
+                result['data'] = book
+                result['ext'] = 'r'
+                resp = json.dumps(result)
+                return resp
+            except:
+                pass
+
+        sess = genNewSession()
+
+        # 伪装成正常用户访问
+        sess.get('https://s-e.jd.com/')
+        sess.headers.update({'Referer': 'https://s-e.jd.com/'})
+
+        # 查询书籍信息
+        url = 'https://s-e.jd.com/Search'
+        params = {
+            'key': isbn,
+            'enc': 'utf-8',
+            'pvid': genPvid(),
+        }
+        resp = sess.get(url, params=params, timeout=100)
+        content = resp.text
+        pattern = r'<div class="p-price">\s*<strong id="(J_\d+)">'
+        skuid = re.findall(pattern, content)
+
+        # 没有结果，返回错误
+        if not skuid:
+            result['errmsg'] = 'book not found.'
+            resp = json.dumps(result)
+            return resp
+
+        # 获取价格
+        skuid = skuid[0]
+        url = f'https://p.3.cn/prices/mgets?skuids={skuid}&type=1'
+        resp = sess.get(url, timeout=100)
+        content = resp.json()
+        price = str('{:.2f}'.format(float(content[0]["p"])))
+        bookUrl = 'https://e.jd.com/{}.html'.format(skuid.replace('J_', ''))
+
+        book = {
+            'isbn': isbn,
+            'title': title,
+            'price': price,
+            'url': bookUrl,
+            'vendor': 'jd',
             'update_time': arrow.now().format('YYYY-MM-DD HH:mm:ss')
         }
         result['data'] = book
