@@ -56,7 +56,7 @@ $ sudo systemctl enable redis-server.service
 - 可选：可以使用 [redis-dump](https://github.com/delano/redis-dump) 的 `redis-load` 命令加载已存储的电子书数据。
 
 ```bash
-$ sudo apt-get install ruby ruby-dev ibc6-dev
+$ sudo apt-get install ruby ruby-dev libc6-dev
 $ gem install redis-dump
 $ < ./data/db_full.json redis-load
 ```
