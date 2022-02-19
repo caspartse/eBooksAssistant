@@ -4,7 +4,7 @@
 // @namespace    https://github.com/caspartse/eBooksAssistant
 // @version      0.17.0
 // @description  eBooks Assistant for douban.com
-// @description:zh-CN 为豆瓣读书页面添加亚马逊Kindle、微信读书、多看阅读、喜马拉雅等直达链接
+// @description:zh-CN 为豆瓣读书页面添加亚马逊Kindle、微信读书、多看阅读、京东读书、当当云阅读、喜马拉雅等直达链接
 // @author       Caspar Tse
 // @license      MIT License
 // @supportURL   https://github.com/caspartse/eBooksAssistant
