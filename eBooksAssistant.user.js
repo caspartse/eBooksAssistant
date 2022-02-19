@@ -2,7 +2,7 @@
 // @name         eBooks Assistant
 // @name:zh-CN   豆瓣读书助手
 // @namespace    https://github.com/caspartse/eBooksAssistant
-// @version      0.17.0
+// @version      0.17.1
 // @description  eBooks Assistant for douban.com
 // @description:zh-CN 为豆瓣读书页面添加亚马逊Kindle、微信读书、多看阅读、京东读书、当当云阅读、喜马拉雅等直达链接
 // @author       Caspar Tse
@@ -18,7 +18,7 @@
 // ==/UserScript==
 
 (function() {
-    var version = "0.17.0";
+    var version = "0.17.1";
     // 如果自己部署服务，这里修改成你的服务器地址
     var domain = "http://8.210.230.166:8081";
     // for debug
@@ -63,12 +63,12 @@
                     }
                     var regexbookPrice = /<span class="a-offscreen">[￥¥]([0-9\.]+)<\/span>/gi;
                     var bookPrice = regexbookPrice.exec(doc)[1];
-                    var amazonKu = false;
+                    var regexAmazonKu = /(免费借阅)|(免费阅读此书)|(涵盖在您的会员资格中)|(或者[￥¥][0-9\.]+购买)/gi;
+                    var amazonKu = regexAmazonKu.test(doc);
                     var buyItemTemplate = ""
-                    if (bookPrice == 0.00 ) {
-                        regexbookPrice = /(免费借阅)|(免费阅读此书)|(涵盖在您的会员资格中)|(或者[￥¥][0-9\.]+购买)/gi;
+                    if (amazonKu) {
+                        regexbookPrice = /或者[￥¥]([0-9\.]+)购买/gi
                         bookPrice = regexbookPrice.exec(doc)[1];
-                        amazonKu = true;
                         buyItemTemplate = `<li> <div class="cell price-btn-wrapper"> <div class="vendor-name"> <a target="_blank" href="${bookUrl}"> <span >
                         <img alt="Kindle Unlimited" src="https://ebooks-assistant.oss-cn-guangzhou.aliyuncs.com/icon_ku.png" width="75" height="10" border="0">
                         </span> </a> </div> <div class="cell impression_track_mod_buyinfo"> <div class="cell price-wrapper"> <a target="_blank" href="${bookUrl}">
