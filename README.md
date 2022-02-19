@@ -11,6 +11,7 @@ eBooks Assistant for douban.com .
 -  添加微信读书 ([weread.qq.com](https://weread.qq.com/)) 在线试读链接、购买链接；
 -  添加多看阅读 ([duokan.com](http://www.duokan.com/)) 在线试读链接、购买链接；
 -  添加京东读书 ([e.jd.com](https://e.jd.com/)) 在线试读链接、购买链接；
+-  添加当当云阅读 ([e.dangdang.com](http://e.dangdang.com/)) 在线试读链接、购买链接；
 -  添加喜马拉雅 ([ximalaya.com](https://www.ximalaya.com/)) 在线试听链接。
 
 

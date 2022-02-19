@@ -147,7 +147,7 @@ def amazon_update():
             'url': url,
             'ku': ku,
             'vendor': 'amazon',
-            'update_time': arrow.now().format('YYYY-MM-DD')
+            'update_time': arrow.now().format('YYYY-MM-DD HH:mm:ss')
         }
         rd.set(cached_key, json.dumps(book), ex=1209600)
         rd.delete(token)
@@ -184,7 +184,7 @@ def amazon_feedback():
             {
                 'price': price,
                 'ku': ku,
-                'update_time': arrow.now().format('YYYY-MM-DD')
+                'update_time': arrow.now().format('YYYY-MM-DD HH:mm:ss')
             }
         )
         rd.set(cached_key, json.dumps(book), ex=1209600)
@@ -264,8 +264,9 @@ def weread():
             # 用标题+副标题搜索
             if subtitle:
                 keyword = f'{title}+{subtitle}'
-                url = f'https://weread.qq.com/web/search/global?keyword={keyword}'
-                resp = sess.get(url, timeout=100)
+                url = 'https://weread.qq.com/web/search/global'
+                params = {'keyword': keyword}
+                resp = sess.get(url, params=params, timeout=100)
                 content = resp.json()
                 totalCount_subtitle = content.get('books') or []
                 if totalCount_subtitle:
@@ -275,8 +276,9 @@ def weread():
             # 用标题+作者搜索
             _author = '+'.join(genWordList(author))
             keyword = f'{title}+{_author}'
-            url = f'https://weread.qq.com/web/search/global?keyword={keyword}'
-            resp = sess.get(url, timeout=100)
+            url = 'https://weread.qq.com/web/search/global'
+            params = {'keyword': keyword}
+            resp = sess.get(url, params=params, timeout=100)
             content = resp.json()
             totalCount_author = content.get('books') or []
             if totalCount_author:
@@ -309,6 +311,7 @@ def weread():
         book = {
             'isbn': isbn,
             'title': _book['title'],
+            'author': _book['author'],
             'price': _book['price'],
             'url': 'https://weread.qq.com{}'.format(bookUrl),
             'vendor': 'weread',
@@ -519,6 +522,7 @@ def duokan():
 
         book = books[0]
         title = book['title']
+        author = book['authors'].replace('\n', ' / ')
         price = book['price']
         price = str('{:.2f}'.format(float(price)))
         bookUrl = 'https://www.duokan.com/pc/detail/{}'.format(book['book_id'])
@@ -532,6 +536,7 @@ def duokan():
         book = {
             'isbn': isbn,
             'title': title,
+            'author': author,
             'price': price,
             'url': bookUrl,
             'vendor': 'duokan',
@@ -639,6 +644,96 @@ def jd():
     resp = json.dumps(result)
     return resp
 
+
+# 当当阅读，只使用 ISBN 查询，返回精确的书籍信息
+@app.route('/dangdang', method='GET')
+def dangdang():
+    response.set_header('Content-Type', 'application/json; charset=UTF-8')
+    response.add_header('Cache-Control', 'no-cache; must-revalidate')
+    response.add_header('Expires', '-1')
+
+    result = {
+        'data': {},
+        'errmsg': '',
+        'vendor': 'dangdang',
+        'token': '',
+        'ematch': True,
+        'ext': ''
+    }
+
+    try:
+        isbn = request.query.isbn or ''
+        isbn = str(isbn).strip()
+
+        # 没有ISBN，返回错误
+        if not isbn:
+            result['errmsg'] = 'isbn not given.'
+            resp = json.dumps(result)
+            return resp
+
+        # 查询已存在的结果
+        cached_key = 'dangdang_' + isbn
+        cached_data = rd.get(cached_key)
+        if cached_data:
+            try:
+                book = json.loads(cached_data)
+                result['data'] = book
+                result['ext'] = 'r'
+                resp = json.dumps(result)
+                return resp
+            except:
+                pass
+
+        sess = genNewSession()
+
+        # 伪装成正常用户访问
+        sess.get('http://e.dangdang.com/index_page.html')
+        sess.headers.update({'Referer': 'http://e.dangdang.com/index_page.html'})
+
+        # 查询书籍信息
+        url = f'http://e.dangdang.com/media/api.go?action=searchMedia&keyword={isbn}'
+        resp = sess.get(url, timeout=100)
+        content = resp.json()
+        books = content['data'].get('searchMediaPaperList', [])
+
+        # 没有结果，返回错误
+        if not books:
+            result['errmsg'] = 'book not found.'
+            resp = json.dumps(result)
+            return resp
+
+        book = books[0]
+        title = book['title']
+        author = book['author']
+        price = book['salePrice']
+        price = str('{:.2f}'.format(float(price)))
+        bookUrl = f"http://e.dangdang.com/products/{book['saleId']}.html"
+
+        # 没有结果，返回错误
+        if not all([price, url]):
+            result['errmsg'] = 'book not found.'
+            resp = json.dumps(result)
+            return resp
+
+        book = {
+            'isbn': isbn,
+            'title': title,
+            'author': author,
+            'price': price,
+            'url': bookUrl,
+            'vendor': 'dangdang',
+            'update_time': arrow.now().format('YYYY-MM-DD HH:mm:ss')
+        }
+        result['data'] = book
+        # 保存结果到 Redis
+        rd.set(cached_key, json.dumps(result['data']), ex=1209600)
+
+    except:
+        traceback.print_exc()
+        result['errmsg'] = 'unknow error.'
+
+    resp = json.dumps(result)
+    return resp
 
 if __name__ == '__main__':
     run(app, server='paste', host='127.0.0.1', port=8082, debug=True, reloader=True)
