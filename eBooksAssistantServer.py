@@ -14,9 +14,6 @@ import arrow
 import math
 
 
-requests.packages.urllib3.disable_warnings()
-
-
 app = Bottle()
 rd_pool = redis.ConnectionPool(host='127.0.0.1', port=6379, decode_responses=True)
 rd = redis.Redis(connection_pool=rd_pool)
@@ -196,7 +193,6 @@ def amazon_feedback():
     return
 
 
-
 @app.route('/weread', method='GET')
 def weread():
     response.set_header('Content-Type', 'application/json; charset=UTF-8')
@@ -284,6 +280,8 @@ def weread():
             if totalCount_author:
                 items = wereadResultHandle(content['books'][:5], isbn, title, author, 3)
                 bookList.extend(items)
+
+        sess.close()
 
         # 没有搜索到结果，返回错误
         if not bookList:
@@ -376,7 +374,6 @@ def ximalaya():
         sess.get('https://www.ximalaya.com/')
         sess.headers.update({'Referer': 'https://www.ximalaya.com/'})
 
-
         url = 'https://www.ximalaya.com/revision/search/main'
         params = {
             'core': 'album',
@@ -390,6 +387,7 @@ def ximalaya():
             'paidFilter': 'false'
         }
         resp = sess.get(url, params=params, timeout=100)
+        sess.close()
         content = resp.json()
         total = int(content['data']['album']['total'])
 
@@ -511,6 +509,7 @@ def duokan():
         # 查询书籍信息
         url = f'https://www.duokan.com/target/search/web?s={isbn}&p=1'
         resp = sess.get(url, timeout=100)
+        sess.close()
         content = resp.json()
         books = content.get('books', [])
 
@@ -526,12 +525,6 @@ def duokan():
         price = book['price']
         price = str('{:.2f}'.format(float(price)))
         bookUrl = 'https://www.duokan.com/pc/detail/{}'.format(book['book_id'])
-
-        # 没有结果，返回错误
-        if not all([price, url]):
-            result['errmsg'] = 'book not found.'
-            resp = json.dumps(result)
-            return resp
 
         book = {
             'isbn': isbn,
@@ -613,6 +606,7 @@ def jd():
 
         # 没有结果，返回错误
         if not skuid:
+            sess.close()
             result['errmsg'] = 'book not found.'
             resp = json.dumps(result)
             return resp
@@ -621,6 +615,7 @@ def jd():
         skuid = skuid[0]
         url = f'https://p.3.cn/prices/mgets?skuids={skuid}&type=1'
         resp = sess.get(url, timeout=100)
+        sess.close()
         content = resp.json()
         price = str('{:.2f}'.format(float(content[0]["p"])))
         bookUrl = 'https://e.jd.com/{}.html'.format(skuid.replace('J_', ''))
@@ -693,6 +688,7 @@ def dangdang():
         # 查询书籍信息
         url = f'http://e.dangdang.com/media/api.go?action=searchMedia&keyword={isbn}'
         resp = sess.get(url, timeout=100)
+        sess.close()
         content = resp.json()
         books = content['data'].get('searchMediaPaperList', [])
 
@@ -708,12 +704,6 @@ def dangdang():
         price = book['salePrice']
         price = str('{:.2f}'.format(float(price)))
         bookUrl = f"http://e.dangdang.com/products/{book['saleId']}.html"
-
-        # 没有结果，返回错误
-        if not all([price, url]):
-            result['errmsg'] = 'book not found.'
-            resp = json.dumps(result)
-            return resp
 
         book = {
             'isbn': isbn,

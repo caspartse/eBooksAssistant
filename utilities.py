@@ -6,9 +6,6 @@ from thefuzz import fuzz
 import js2py
 
 
-requests.packages.urllib3.disable_warnings()
-
-
 def genNewSession():
     sess = requests.Session()
     sess.trust_env = False
@@ -28,7 +25,7 @@ def genNewSession():
 def genWordList(string):
     wordList = re.sub(
         r'•|·|▪|\.|\-|\[|\]|\/|\||\(|\)|（|）|<|>|【|】|\?|？|〔|〕', '\t', string).split('\t')
-    wordList = [w.strip() for w in wordList if len(w) > 1]
+    wordList = [w.strip() for w in wordList]
     return wordList
 
 def adjustNum(numerator, denominator):
@@ -80,7 +77,7 @@ def wereadResultHandle(books, isbn, title, author, queryKind):
 
 def genPvid():
     js_fnc = '''
-    function(){var a=(new Date).getTime();var b="xxxxxxxxxxxx4xxxyxxxxxxxxxxxxxxx".replace(/[xy]/g,function(b){var c=(a+16*Math.random())%16|0;return a=Math.floor(a/16),("x"==b?c:3&c|8).toString(16)});return b}
+        function(){var a=(new Date).getTime();var b="xxxxxxxxxxxx4xxxyxxxxxxxxxxxxxxx".replace(/[xy]/g,function(b){var c=(a+16*Math.random())%16|0;return a=Math.floor(a/16),("x"==b?c:3&c|8).toString(16)});return b}
     '''
     pvid = js2py.eval_js(js_fnc)()
     return pvid

@@ -9,9 +9,6 @@ from time import sleep
 import arrow
 
 
-requests.packages.urllib3.disable_warnings()
-
-
 app = Bottle()
 
 
@@ -25,8 +22,6 @@ def hasResult(content):
 def fetchContent(keyword):
     keyword = keyword.replace('|', ' ')
     sess = requests.Session()
-    sess.trust_env = False
-    sess.verify = False
     headers = {
         'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:96.0) Gecko/20100101 Firefox/96.0',
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
@@ -52,6 +47,7 @@ def fetchContent(keyword):
         'field-keywords': keyword
     }
     resp = sess.get(url, params=params, timeout=200)
+    sess.close()
     content = resp.text
     return content
 

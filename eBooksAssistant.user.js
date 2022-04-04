@@ -2,7 +2,7 @@
 // @name         eBooks Assistant
 // @name:zh-CN   豆瓣读书助手
 // @namespace    https://github.com/caspartse/eBooksAssistant
-// @version      0.17.1
+// @version      0.17.2
 // @description  eBooks Assistant for douban.com
 // @description:zh-CN 为豆瓣读书页面添加亚马逊Kindle、微信读书、多看阅读、京东读书、当当云阅读、喜马拉雅等直达链接
 // @author       Caspar Tse
@@ -18,15 +18,23 @@
 // ==/UserScript==
 
 (function() {
-    var version = "0.17.1";
+    var version = "0.17.2";
     // 如果自己部署服务，这里修改成你的服务器地址
     var domain = "http://8.210.230.166:8081";
     // for debug
     // var domain = "http://127.0.0.1:8082";
 
+    // 静态资源地址，可替换成你的服务器地址
+    var static_url = "https://ebooks-assistant.oss-accelerate.aliyuncs.com";
+
     function adjustMargin() {
         if ($('[data-ebassistant="read"]').height() > 36) {
-            $('[data-ebassistant="read"]').attr("style", "margin-right:0;");
+            $('[data-ebassistant="read"]').attr("style", "margin-right:0!important;");
+            $('[data-ebassistant="read"] .online-read-or-audio').each(function() {
+                if(($(this).offset().left - $('[data-ebassistant="read"]').offset().left) == 0) {
+                    $(this).attr("style", "margin-left:65px!important;");
+                }
+            });
         }
     }
 
@@ -48,17 +56,17 @@
                     var partnerTemplate = "";
                     if ($('.online-type[data-ebassistant="read"]').length) {
                         partnerTemplate = `<div class="online-read-or-audio"> <a class="impression_track_mod_buyinfo" target="_blank" href="${bookUrl}">
-                        <img src="https://ebooks-assistant.oss-cn-guangzhou.aliyuncs.com/icon_kindle.png" width="16" height="16"> <span>Kindle</span> </a> </div>`;
+                        <img src="${static_url}/icon_kindle.png" width="16" height="16"> <span>Kindle</span> </a> </div>`;
                         $('.online-type[data-ebassistant="read"]').append(partnerTemplate);
                     } else if ($('.online-type[data-ebassistant="audio"]').length) {
                         partnerTemplate = `<div class="online-type" data-ebassistant="read"> <span>在线试读：</span> <div class="online-read-or-audio">
                         <a class="impression_track_mod_buyinfo" target="_blank" href="${bookUrl}" one-link-mark="yes">
-                        <img src="https://ebooks-assistant.oss-cn-guangzhou.aliyuncs.com/icon_kindle.png" width="16" height="16"> <span>Kindle</span> </a> </div></div>`;
+                        <img src="${static_url}/icon_kindle.png" width="16" height="16"> <span>Kindle</span> </a> </div></div>`;
                         $('.online-type[data-ebassistant="audio"]').before(partnerTemplate);
                     } else {
                         partnerTemplate = `<div class="online-partner"> <div class="online-type" data-ebassistant="read"> <span>在线试读：</span>
                         <div class="online-read-or-audio"> <a class="impression_track_mod_buyinfo" target="_blank" href="${bookUrl}" one-link-mark="yes">
-                        <img src="https://ebooks-assistant.oss-cn-guangzhou.aliyuncs.com/icon_kindle.png" width="16" height="16"> <span>Kindle</span> </a> </div></div> </div>`;
+                        <img src="${static_url}/icon_kindle.png" width="16" height="16"> <span>Kindle</span> </a> </div></div> </div>`;
                         $("#link-report").after(partnerTemplate);
                     }
                     var regexbookPrice = /<span class="a-offscreen">[￥¥]([0-9\.]+)<\/span>/gi;
@@ -69,15 +77,14 @@
                     if (amazonKu) {
                         regexbookPrice = /或者[￥¥]([0-9\.]+)购买/gi
                         bookPrice = regexbookPrice.exec(doc)[1];
-                        buyItemTemplate = `<li> <div class="cell price-btn-wrapper"> <div class="vendor-name"> <a target="_blank" href="${bookUrl}"> <span >
-                        <img alt="Kindle Unlimited" src="https://ebooks-assistant.oss-cn-guangzhou.aliyuncs.com/icon_ku.png" width="75" height="10" border="0">
+                        buyItemTemplate = `<li> <div class="cell price-btn-wrapper"> <div class="vendor-name"> <a target="_blank" href="${bookUrl}"> <span>
+                        <img alt="Kindle Unlimited" src="${static_url}/icon_ku.png" width="75" height="10" border="0">
                         </span> </a> </div> <div class="cell impression_track_mod_buyinfo"> <div class="cell price-wrapper"> <a target="_blank" href="${bookUrl}">
                         <span class="buylink-price "> ${bookPrice}元 </span> </a> </div> <div class="cell"> <a target="_blank" href="${bookUrl}" class="buy-book-btn e-book-btn">
                         <span>购买电子书</span> </a> </div> </div> </div> <div class="more-info"> <span class="buyinfo-promotion">KU可免费借阅</span> </div> </li>`;
                     } else {
                         buyItemTemplate = `<li> <div class="cell price-btn-wrapper"> <div class="vendor-name"> <a target="_blank" href="${bookUrl}"> <span>
-                        <img src="https://ebooks-assistant.oss-cn-guangzhou.aliyuncs.com/icon_kindle.png" style="border-radius: 50%; box-shadow: 0 0 1px 0 rgba(0,0,0,0.6);"
-                         width="16" height="16" border="0">&nbsp;Kindle</span> </a> </div> <div class="cell impression_track_mod_buyinfo"> <div class="cell price-wrapper">
+                        <img class="eba-vendor-icon src="${static_url}/icon_kindle.png">&nbsp;Kindle</span> </a> </div> <div class="cell impression_track_mod_buyinfo"> <div class="cell price-wrapper">
                         <a target="_blank" href="${bookUrl}"> <span class="buylink-price "> ${bookPrice}元 </span> </a> </div> <div class="cell">
                         <a target="_blank" href="${bookUrl}" class="buy-book-btn e-book-btn"> <span>购买电子书</span> </a> </div> </div> </div> </li>`;
                     }
@@ -93,10 +100,10 @@
                         }
                     });
                 }
+                adjustMargin();
                 return;
             }
         });
-        adjustMargin();
         return;
     }
 
@@ -149,27 +156,26 @@
                     var partnerTemplate = "";
                     if ($('.online-type[data-ebassistant="read"]').length) {
                         partnerTemplate = `<div class="online-read-or-audio"> <a class="impression_track_mod_buyinfo" target="_blank" href="${bookUrl}">
-                        <img src="https://ebooks-assistant.oss-cn-guangzhou.aliyuncs.com/icon_kindle.png" width="16" height="16"> <span>Kindle</span> </a> </div>`;
+                        <img src="${static_url}/icon_kindle.png" width="16" height="16"> <span>Kindle</span> </a> </div>`;
                         $('.online-type[data-ebassistant="read"]').append(partnerTemplate);
                     } else if ($('.online-type[data-ebassistant="audio"]').length) {
                         partnerTemplate = `<div class="online-type" data-ebassistant="read"> <span>在线试读：</span> <div class="online-read-or-audio">
                         <a class="impression_track_mod_buyinfo" target="_blank" href="${bookUrl}" one-link-mark="yes">
-                        <img src="https://ebooks-assistant.oss-cn-guangzhou.aliyuncs.com/icon_kindle.png" width="16" height="16"> <span>Kindle</span> </a> </div></div>`;
+                        <img src="${static_url}/icon_kindle.png" width="16" height="16"> <span>Kindle</span> </a> </div></div>`;
                         $('.online-type[data-ebassistant="audio"]').before(partnerTemplate);
                     } else {
                         partnerTemplate = `<div class="online-partner"> <div class="online-type" data-ebassistant="read"> <span>在线试读：</span>
                         <div class="online-read-or-audio"> <a class="impression_track_mod_buyinfo" target="_blank" href="${bookUrl}" one-link-mark="yes">
-                        <img src="https://ebooks-assistant.oss-cn-guangzhou.aliyuncs.com/icon_kindle.png" width="16" height="16"> <span>Kindle</span> </a> </div></div> </div>`;
+                        <img src="${static_url}/icon_kindle.png" width="16" height="16"> <span>Kindle</span> </a> </div></div> </div>`;
                         $("#link-report").after(partnerTemplate);
                     }
-                    var buyItemTemplate = `<li> <div class="cell price-btn-wrapper"> <div class="vendor-name"> <a target="_blank" href="${bookUrl}">
-                    <span><img src="https://ebooks-assistant.oss-cn-guangzhou.aliyuncs.com/icon_kindle.png" style="border-radius: 50%; box-shadow: 0 0 1px 0 rgba(0,0,0,0.6);"
-                     width="16" height="16" border="0">&nbsp;Kindle</span> </a> </div> <div class="cell impression_track_mod_buyinfo"> <div class="cell price-wrapper">
+                    var buyItemTemplate = `<li> <div class="cell price-btn-wrapper"> <div class="vendor-name"> <a target="_blank" href="${bookUrl}"><span>
+                    <img class="eba-vendor-icon" src="${static_url}/icon_kindle.png">&nbsp;Kindle</span> </a> </div> <div class="cell impression_track_mod_buyinfo"> <div class="cell price-wrapper">
                     <a target="_blank" href="${bookUrl}"> <span class="buylink-price "> ${bookPrice}元 </span> </a> </div> <div class="cell">
                     <a target="_blank" href="${bookUrl}" class="buy-book-btn e-book-btn"> <span>购买电子书</span> </a> </div> </div> </div> </li>`;
                     if (ku === true) {
-                        buyItemTemplate = `<li> <div class="cell price-btn-wrapper"> <div class="vendor-name"> <a target="_blank" href="${bookUrl}"> <span >
-                        <img alt="Kindle Unlimited" src="https://ebooks-assistant.oss-cn-guangzhou.aliyuncs.com/icon_ku.png" width="75" height="10" border="0">
+                        buyItemTemplate = `<li> <div class="cell price-btn-wrapper"> <div class="vendor-name"> <a target="_blank" href="${bookUrl}"> <span>
+                        <img alt="Kindle Unlimited" src="${static_url}/icon_ku.png" width="75" height="10" border="0">
                         </span> </a> </div> <div class="cell impression_track_mod_buyinfo"> <div class="cell price-wrapper"> <a target="_blank" href="${bookUrl}">
                         <span class="buylink-price "> ${bookPrice}元 </span> </a> </div> <div class="cell"> <a target="_blank" href="${bookUrl}" class="buy-book-btn e-book-btn">
                         <span>购买电子书</span> </a> </div> </div> </div> <div class="more-info"> <span class="buyinfo-promotion">KU可免费借阅</span> </div> </li>`;
@@ -183,10 +189,10 @@
                     console.log("call queryAmazon_Local.");
                     queryAmazon_Local(isbn, title, token);
                 }
+                adjustMargin();
                 return;
             }
         });
-        adjustMargin();
         return;
     }
 
@@ -207,30 +213,29 @@
                     var partnerTemplate = "";
                     if ($('.online-type[data-ebassistant="read"]').length) {
                         partnerTemplate = `<div class="online-read-or-audio"> <a class="impression_track_mod_buyinfo" target="_blank" href="${bookUrl}">
-                        <img src="https://ebooks-assistant.oss-cn-guangzhou.aliyuncs.com/icon_weread.png" width="16" height="16"> <span>微信读书</span> </a> </div>`;
+                        <img src="${static_url}/icon_weread.png" width="16" height="16"> <span>微信读书</span> </a> </div>`;
                         $('.online-type[data-ebassistant="read"]').append(partnerTemplate);
                     } else if ($('.online-type[data-ebassistant="audio"]').length) {
                         partnerTemplate = `<div class="online-type" data-ebassistant="read"> <span>在线试读：</span> <div class="online-read-or-audio">
                         <a class="impression_track_mod_buyinfo" target="_blank" href="${bookUrl}" one-link-mark="yes">
-                        <img src="https://ebooks-assistant.oss-cn-guangzhou.aliyuncs.com/icon_weread.png" width="16" height="16"> <span>微信读书</span> </a> </div></div>`;
+                        <img src="${static_url}/icon_weread.png" width="16" height="16"> <span>微信读书</span> </a> </div></div>`;
                         $('.online-type[data-ebassistant="audio"]').before(partnerTemplate);
                     } else {
                         partnerTemplate = `<div class="online-partner"> <div class="online-type" data-ebassistant="read"> <span>在线试读：</span>
                         <div class="online-read-or-audio"> <a class="impression_track_mod_buyinfo" target="_blank" href="${bookUrl}" one-link-mark="yes">
-                        <img src="https://ebooks-assistant.oss-cn-guangzhou.aliyuncs.com/icon_weread.png" width="16" height="16"> <span>微信读书</span> </a> </div></div> </div>`;
+                        <img src="${static_url}/icon_weread.png" width="16" height="16"> <span>微信读书</span> </a> </div></div> </div>`;
                         $("#link-report").after(partnerTemplate);
                     }
                     var buyItemTemplate = `<li> <div class="cell price-btn-wrapper"> <div class="vendor-name"> <a target="_blank" href="${bookUrl}"> <span>
-                    <img src="https://ebooks-assistant.oss-cn-guangzhou.aliyuncs.com/icon_weread.png" style="border-radius: 50%; box-shadow: 0 0 1px 0 rgba(0,0,0,0.6);"
-                     width="16" height="16" border="0">&nbsp;微信读书</span> </a> </div> <div class="cell impression_track_mod_buyinfo"> <div class="cell price-wrapper">
+                    <img class="eba-vendor-icon" src="${static_url}/icon_weread.png">&nbsp;微信读书</span> </a> </div> <div class="cell impression_track_mod_buyinfo"> <div class="cell price-wrapper">
                     <a target="_blank" href="${bookUrl}"> <span class="buylink-price "> ${bookPrice}元 </span> </a> </div> <div class="cell">
                     <a target="_blank" href="${bookUrl}" class="buy-book-btn e-book-btn"> <span>购买电子书</span> </a> </div> </div> </div> </li>`;
                     $("#buyinfo ul:nth-child(2)").prepend(buyItemTemplate);
                 }
+                adjustMargin();
                 return;
             }
         });
-        adjustMargin();
         return;
     }
 
@@ -251,30 +256,29 @@
                     var partnerTemplate = "";
                     if ($('.online-type[data-ebassistant="read"]').length) {
                         partnerTemplate = `<div class="online-read-or-audio"> <a class="impression_track_mod_buyinfo" target="_blank" href="${bookUrl}">
-                        <img src="https://ebooks-assistant.oss-cn-guangzhou.aliyuncs.com/icon_duokan.png" width="16" height="16"> <span>多看阅读</span> </a> </div>`;
+                        <img src="${static_url}/icon_duokan.png" width="16" height="16"> <span>多看阅读</span> </a> </div>`;
                         $('.online-type[data-ebassistant="read"]').append(partnerTemplate);
                     } else if ($('.online-type[data-ebassistant="audio"]').length) {
                         partnerTemplate = `<div class="online-type" data-ebassistant="read"> <span>在线试读：</span> <div class="online-read-or-audio">
                         <a class="impression_track_mod_buyinfo" target="_blank" href="${bookUrl}" one-link-mark="yes">
-                        <img src="https://ebooks-assistant.oss-cn-guangzhou.aliyuncs.com/icon_duokan.png" width="16" height="16"> <span>多看阅读</span> </a> </div></div>`;
+                        <img src="${static_url}/icon_duokan.png" width="16" height="16"> <span>多看阅读</span> </a> </div></div>`;
                         $('.online-type[data-ebassistant="audio"]').before(partnerTemplate);
                     } else {
                         partnerTemplate = `<div class="online-partner"> <div class="online-type" data-ebassistant="read"> <span>在线试读：</span>
                         <div class="online-read-or-audio"> <a class="impression_track_mod_buyinfo" target="_blank" href="${bookUrl}" one-link-mark="yes">
-                        <img src="https://ebooks-assistant.oss-cn-guangzhou.aliyuncs.com/icon_duokan.png" width="16" height="16"> <span>多看阅读</span> </a> </div></div> </div>`;
+                        <img src="${static_url}/icon_duokan.png" width="16" height="16"> <span>多看阅读</span> </a> </div></div> </div>`;
                         $("#link-report").after(partnerTemplate);
                     }
                     var buyItemTemplate = `<li> <div class="cell price-btn-wrapper"> <div class="vendor-name"> <a target="_blank" href="${bookUrl}"> <span>
-                    <img src="https://ebooks-assistant.oss-cn-guangzhou.aliyuncs.com/icon_duokan.png" style="border-radius: 50%; box-shadow: 0 0 1px 0 rgba(0,0,0,0.6);"
-                     width="16" height="16" border="0">&nbsp;多看阅读</span> </a> </div> <div class="cell impression_track_mod_buyinfo"> <div class="cell price-wrapper">
+                    <img class="eba-vendor-icon" src="${static_url}/icon_duokan.png">&nbsp;多看阅读</span> </a> </div> <div class="cell impression_track_mod_buyinfo"> <div class="cell price-wrapper">
                     <a target="_blank" href="${bookUrl}"> <span class="buylink-price "> ${bookPrice}元 </span> </a> </div> <div class="cell">
                     <a target="_blank" href="${bookUrl}" class="buy-book-btn e-book-btn"> <span>购买电子书</span> </a> </div> </div> </div> </li>`;
                     $("#buyinfo ul:nth-child(2)").prepend(buyItemTemplate);
                 }
+                adjustMargin();
                 return;
             }
         });
-        adjustMargin();
         return;
     }
 
@@ -294,24 +298,24 @@
                     var partnerTemplate = "";
                     if ($(".online-partner .online-type").length == 2) {
                         partnerTemplate = `<div class="online-read-or-audio"> <a class="impression_track_mod_buyinfo" target="_blank" href="${alubmUrl}">
-                        <img src="https://ebooks-assistant.oss-cn-guangzhou.aliyuncs.com/icon_ximalaya.png" width="16" height="16"> <span>喜马拉雅</span> </a> </div>`;
+                        <img src="${static_url}/icon_ximalaya.png" width="16" height="16"> <span>喜马拉雅</span> </a> </div>`;
                         $('.online-type[data-ebassistant="audio"]').append(partnerTemplate);
                     } else if ($(".online-partner .online-type").length == 1) {
                         partnerTemplate = `<div class="online-type" data-ebassistant="audio"> <span>在线试听：</span> <div class="online-read-or-audio">
                         <a class="impression_track_mod_buyinfo" target="_blank" href="${alubmUrl}" one-link-mark="yes">
-                        <img src="https://ebooks-assistant.oss-cn-guangzhou.aliyuncs.com/icon_ximalaya.png" width="16" height="16"> <span>喜马拉雅</span> </a> </div></div>`;
+                        <img src="${static_url}/icon_ximalaya.png" width="16" height="16"> <span>喜马拉雅</span> </a> </div></div>`;
                         $('.online-type[data-ebassistant="read"]').after(partnerTemplate);
                     } else {
                         partnerTemplate = `<div class="online-partner"> <div class="online-type" data-ebassistant="audio"> <span>在线试听：</span>
                         <div class="online-read-or-audio"> <a class="impression_track_mod_buyinfo" target="_blank" href="${alubmUrl}" one-link-mark="yes">
-                        <img src="https://ebooks-assistant.oss-cn-guangzhou.aliyuncs.com/icon_ximalaya.png" width="16" height="16"> <span>喜马拉雅</span> </a> </div></div> </div>`;
+                        <img src="${static_url}/icon_ximalaya.png" width="16" height="16"> <span>喜马拉雅</span> </a> </div></div> </div>`;
                         $("#link-report").after(partnerTemplate);
                     }
                 }
+                adjustMargin();
                 return;
             }
         });
-        adjustMargin();
         return;
     }
 
@@ -332,30 +336,29 @@
                     var partnerTemplate = "";
                     if ($('.online-type[data-ebassistant="read"]').length) {
                         partnerTemplate = `<div class="online-read-or-audio"> <a class="impression_track_mod_buyinfo" target="_blank" href="${bookUrl}">
-                        <img src="https://ebooks-assistant.oss-cn-guangzhou.aliyuncs.com/icon_jd.png" width="16" height="16"> <span>京东读书</span> </a> </div>`;
+                        <img src="${static_url}/icon_jd.png" width="16" height="16"> <span>京东读书</span> </a> </div>`;
                         $('.online-type[data-ebassistant="read"]').append(partnerTemplate);
                     } else if ($('.online-type[data-ebassistant="audio"]').length) {
                         partnerTemplate = `<div class="online-type" data-ebassistant="read"> <span>在线试读：</span> <div class="online-read-or-audio">
                         <a class="impression_track_mod_buyinfo" target="_blank" href="${bookUrl}" one-link-mark="yes">
-                        <img src="https://ebooks-assistant.oss-cn-guangzhou.aliyuncs.com/icon_jd.png" width="16" height="16"> <span>京东读书</span> </a> </div></div>`;
+                        <img src="${static_url}/icon_jd.png" width="16" height="16"> <span>京东读书</span> </a> </div></div>`;
                         $('.online-type[data-ebassistant="audio"]').before(partnerTemplate);
                     } else {
                         partnerTemplate = `<div class="online-partner"> <div class="online-type" data-ebassistant="read"> <span>在线试读：</span>
                         <div class="online-read-or-audio"> <a class="impression_track_mod_buyinfo" target="_blank" href="${bookUrl}" one-link-mark="yes">
-                        <img src="https://ebooks-assistant.oss-cn-guangzhou.aliyuncs.com/icon_jd.png" width="16" height="16"> <span>京东读书</span> </a> </div></div> </div>`;
+                        <img src="${static_url}/icon_jd.png" width="16" height="16"> <span>京东读书</span> </a> </div></div> </div>`;
                         $("#link-report").after(partnerTemplate);
                     }
                     var buyItemTemplate = `<li> <div class="cell price-btn-wrapper"> <div class="vendor-name"> <a target="_blank" href="${bookUrl}"> <span>
-                    <img src="https://ebooks-assistant.oss-cn-guangzhou.aliyuncs.com/icon_jd.png" style="border-radius: 50%; box-shadow: 0 0 1px 0 rgba(0,0,0,0.6);"
-                     width="16" height="16" border="0">&nbsp;京东读书</span> </a> </div> <div class="cell impression_track_mod_buyinfo"> <div class="cell price-wrapper">
+                    <img class="eba-vendor-icon" src="${static_url}/icon_jd.png">&nbsp;京东读书</span> </a> </div> <div class="cell impression_track_mod_buyinfo"> <div class="cell price-wrapper">
                     <a target="_blank" href="${bookUrl}"> <span class="buylink-price "> ${bookPrice}元 </span> </a> </div> <div class="cell">
                     <a target="_blank" href="${bookUrl}" class="buy-book-btn e-book-btn"> <span>购买电子书</span> </a> </div> </div> </div> </li>`;
                     $("#buyinfo ul:nth-child(2)").prepend(buyItemTemplate);
                 }
+                adjustMargin();
                 return;
             }
         });
-        adjustMargin();
         return;
     }
 
@@ -376,30 +379,29 @@
                     var partnerTemplate = "";
                     if ($('.online-type[data-ebassistant="read"]').length) {
                         partnerTemplate = `<div class="online-read-or-audio"> <a class="impression_track_mod_buyinfo" target="_blank" href="${bookUrl}">
-                        <img src="https://ebooks-assistant.oss-cn-guangzhou.aliyuncs.com/icon_dangdang.png" width="16" height="16"> <span>当当云阅读</span> </a> </div>`;
+                        <img src="${static_url}/icon_dangdang.png" width="16" height="16"> <span>当当云阅读</span> </a> </div>`;
                         $('.online-type[data-ebassistant="read"]').append(partnerTemplate);
                     } else if ($('.online-type[data-ebassistant="audio"]').length) {
                         partnerTemplate = `<div class="online-type" data-ebassistant="read"> <span>在线试读：</span> <div class="online-read-or-audio">
                         <a class="impression_track_mod_buyinfo" target="_blank" href="${bookUrl}" one-link-mark="yes">
-                        <img src="https://ebooks-assistant.oss-cn-guangzhou.aliyuncs.com/icon_dangdang.png" width="16" height="16"> <span>当当云阅读</span> </a> </div></div>`;
+                        <img src="${static_url}/icon_dangdang.png" width="16" height="16"> <span>当当云阅读</span> </a> </div></div>`;
                         $('.online-type[data-ebassistant="audio"]').before(partnerTemplate);
                     } else {
                         partnerTemplate = `<div class="online-partner"> <div class="online-type" data-ebassistant="read"> <span>在线试读：</span>
                         <div class="online-read-or-audio"> <a class="impression_track_mod_buyinfo" target="_blank" href="${bookUrl}" one-link-mark="yes">
-                        <img src="https://ebooks-assistant.oss-cn-guangzhou.aliyuncs.com/icon_dangdang.png" width="16" height="16"> <span>当当云阅读</span> </a> </div></div> </div>`;
+                        <img src="${static_url}/icon_dangdang.png" width="16" height="16"> <span>当当云阅读</span> </a> </div></div> </div>`;
                         $("#link-report").after(partnerTemplate);
                     }
                     var buyItemTemplate = `<li> <div class="cell price-btn-wrapper"> <div class="vendor-name"> <a target="_blank" href="${bookUrl}"> <span>
-                    <img src="https://ebooks-assistant.oss-cn-guangzhou.aliyuncs.com/icon_dangdang.png" style="border-radius: 50%; box-shadow: 0 0 1px 0 rgba(0,0,0,0.6);"
-                     width="16" height="16" border="0">&nbsp;当当云阅读&nbsp;</span> </a> </div> <div class="cell impression_track_mod_buyinfo"> <div class="cell price-wrapper">
+                    <img class="eba-vendor-icon" src="${static_url}/icon_dangdang.png">&nbsp;当当云阅读&nbsp;</span> </a> </div> <div class="cell impression_track_mod_buyinfo"> <div class="cell price-wrapper">
                     <a target="_blank" href="${bookUrl}"> <span class="buylink-price "> ${bookPrice}元 </span> </a> </div> <div class="cell">
                     <a target="_blank" href="${bookUrl}" class="buy-book-btn e-book-btn"> <span>购买电子书</span> </a> </div> </div> </div> </li>`;
                     $("#buyinfo ul:nth-child(2)").prepend(buyItemTemplate);
                 }
+                adjustMargin();
                 return;
             }
         });
-        adjustMargin();
         return;
     }
 
@@ -411,7 +413,8 @@
     }
     var newStyle = `<style type="text/css" media="screen">.online-partner{flex-wrap:wrap;padding-top:5px;padding-bottom:5px}.online-type{flex-wrap:wrap}
     .online-read-or-audio{margin-top:5px;margin-bottom:5px}.online-partner .online-type:nth-child(1){margin-right:20px}
-    .online-partner .online-type:last-child{margin-right:0}.online-partner .online-type:nth-child(2){padding-left:0}[data-ebassistant=read] div:last-child a{margin-right:0}</style>`;
+    .online-partner .online-type:last-child{margin-right:0}.online-partner .online-type:nth-child(2){padding-left:0}[data-ebassistant=read] div:last-child a{margin-right:0}
+    .eba-vendor-icon {text-decoration:none;display:inline-block;vertical-align:middle;width:15px;height:15px;margin-top:-2px;border:0;border-radius:50%;box-shadow: 0 0 1px 0 rgba(0,0,0,0.6);}</style>`;
     $("#content").append(newStyle);
 
     var regexLinkedData = /<script type="application\/ld\+json">([\s\S]+?)<\/script>/gi;
@@ -446,7 +449,7 @@
     console.log(translator);
     var publisher = "";
     try {
-        var regexPublisher = /<span class="pl">\s*出版社:?<\/span>\s*:?\s*([\s\S]+?)<br\/?>/gi;
+        var regexPublisher = /<span class="pl">\s*出版社:?<\/span>\s*:?\s*<a[^>]+>([\s\S]+?)<\/a>/gi;
         publisher = regexPublisher.exec(document.documentElement.innerHTML.replace(/&nbsp;/gi, " "))[1].trim();
     } catch(e) {
         console.log(e);

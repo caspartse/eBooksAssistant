@@ -103,7 +103,6 @@ if __name__ == '__main__':
     bookUrl = headlessBrowser(book)
     print('https://weread.qq.com{}'.format(bookUrl))
 
-
     isbn = ''
     title = '斯通纳'
     subtitle = ''
