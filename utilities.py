@@ -51,14 +51,21 @@ def wereadResultHandle(books, isbn, title, author, queryKind):
         # 微信读书启用全文（含书本内容）匹配，所以需要做作者相似度计算
         author = ''.join(genWordList(author))
         authorRatio = fuzz.partial_ratio(book['author'], author)
-        if authorRatio < 50:
+        # queryKind = 1 代表按照 ISBN 查询，此处豁免作者相似度判断，是因为存在部分外国作者中文译名不统一，或中英文混用的情况
+        if (queryKind != 1) and (authorRatio < 50):
             continue
 
         # 设计一个权重分数
-        score = (titleRatio / 100) * 0.50 \
-        + (authorRatio / 100) * 0.40 \
-        + adjustNum((5 - idx), 5) * 0.05 \
-        + (1 / queryKind) * 0.05
+        if queryKind == 1:
+            score = (titleRatio / 100) * 0.70 \
+            + (authorRatio / 100) * 0.20 \
+            + adjustNum((5 - idx), 5) * 0.05 \
+            + (1 / queryKind) * 0.05
+        else:
+            score = (titleRatio / 100) * 0.50 \
+            + (authorRatio / 100) * 0.40 \
+            + adjustNum((5 - idx), 5) * 0.05 \
+            + (1 / queryKind) * 0.05
 
         item = {
             'bookId': str(book['bookId']),

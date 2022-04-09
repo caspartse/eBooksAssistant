@@ -112,8 +112,8 @@ def amazon():
 
 
 # 接收来自客户端的抓取结果
-@app.route('/amazon/update', method='POST')
-def amazon_update():
+@app.route('/amazon/push', method='POST')
+def amazon_push():
     try:
         token = request.forms.get('token')
         isbn = request.forms.get('isbn')
