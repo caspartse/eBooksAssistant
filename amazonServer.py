@@ -3,9 +3,8 @@
 import traceback
 from bottle import Bottle, request, response, run
 import requests
-import simplejson as json
+import orjson as json
 import re
-from time import sleep
 import arrow
 
 
@@ -35,14 +34,11 @@ def fetchContent(keyword):
     sess.headers.update(headers)
 
     # 伪装成正常用户访问
-    sess.get('https://www.amazon.cn/b?node=116087071')
+    sess.get('https://www.amazon.cn/Kindle商店/b/?ie=UTF8&node=116087071&ref_=topnav_storetab_kinc')
 
-    url = 'https://www.amazon.cn/s'
+    url = 'https://www.amazon.cn/s/ref=nb_sb_noss_1'
     params = {
         '__mk_zh_CN': '亚马逊网站',
-        'i': 'digital-text',
-        'k':  keyword,
-        'ref': 'nb_sb_noss',
         'url': 'search-alias=digital-text',
         'field-keywords': keyword
     }
@@ -98,24 +94,26 @@ def amazon():
 
         pattern = r'href="(\S+keywords=[^"]+)"[^>]*>Kindle电子书</a>'
         bookUrl = re.findall(pattern, content)[0]
-        bookUrl = 'https://www.amazon.cn{}'.format(bookUrl)
+        bookUrl = f'https://www.amazon.cn{bookUrl}'
         # 为了改善交互体验：将书名带入搜索框（URL 中的 keywords/field-keywords），如果对结果不满意，可以直接点击按钮搜索，而不需要再次输入书名
         title = title
         bookUrl = bookUrl.replace(str(isbn), title)
         bookUrl = bookUrl.replace('&amp;', '&')
 
+        # 非 KU 电子书
         try:
-            pattern = r'class="a-offscreen"[^>]*>\s*[￥|¥]([0-9\.]+)\s*<\/span>'
+            pattern = r'class="a-offscreen"[^>]*>\s*[￥|¥]([\d\.]+)\s*<\/span>'
             price = re.findall(pattern, content)[0]
         except:
-            pattern = r'id="kindle-price"[^>]*>\s*[￥|¥]([0-9\.]+)\s*<\/span>'
+            pattern = r'id="kindle-price"[^>]*>\s*[￥|¥]([\d\.]+)\s*<\/span>'
             price = re.findall(pattern, content)[0]
         price = str('{:.2f}'.format(float(price)))
 
-        pattern = r'(免费借阅)|(免费阅读此书)|(涵盖在您的会员资格中)|(或者[￥¥][0-9\.]+购买)'
+        # KU 电子书
+        pattern = r'(免费借阅)|(免费阅读此书)|(涵盖在您的会员资格中)|(或者[￥¥][\d\.]+购买)'
         if re.search(pattern, content) and (price == '0.00'):
             isKindleUnlimited = True
-            pattern = r'或者[￥¥]([0-9\.]+)购买'
+            pattern = r'或者[￥¥]([\d\.]+)购买'
             price = re.findall(pattern, content)[0]
             price = str('{:.2f}'.format(float(price)))
         else:
@@ -143,4 +141,4 @@ def amazon():
 if __name__ == '__main__':
     run(app, server='paste', host='127.0.0.1', port=8083, debug=True, reloader=True)
 
-    # curl 'http://127.0.0.1:8083/_amazon?isbn=9787559610782&title=%E5%AD%98%E5%9C%A8%E4%B8%BB%E4%B9%89%E5%92%96%E5%95%A1%E9%A6%86'
+    # curl 'http://127.0.0.1:8083/_amazon?isbn=9787559610782&title=存在主义咖啡馆'

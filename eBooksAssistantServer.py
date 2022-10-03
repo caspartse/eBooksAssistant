@@ -5,10 +5,10 @@ from utilities import *
 from bottle import Bottle, request, response, run
 from uuid import uuid4
 import re
-import simplejson as json
+import orjson as json
 from thefuzz import fuzz
 from random import choice
-from headlessBrowser import headlessBrowser
+from headlessBrowser import hb_weread, hb_jd
 import redis
 import arrow
 import math
@@ -17,6 +17,12 @@ import math
 app = Bottle()
 rd_pool = redis.ConnectionPool(host='127.0.0.1', port=6379, decode_responses=True)
 rd = redis.Redis(connection_pool=rd_pool)
+
+
+@app.route('/')
+def home():
+    response.status = 302
+    response.set_header('Location', 'https://api.youdianzishu.com')
 
 
 @app.route('/amazon', method='GET')
@@ -31,7 +37,7 @@ def amazon():
         'errmsg': '',
         'vendor': 'amazon',
         'token': token,
-        'ematch': True,
+        'isbn_match': True,
         'ext': ''
     }
 
@@ -43,6 +49,8 @@ def amazon():
         author = request.query.author or ''
         translator = request.query.translator or ''
         publisher = request.query.publisher or ''
+        # fix 旧版本的 bug
+        publisher = re.sub(r'</?a[^>]*>', '', publisher)
 
         # 没有ISBN或标题，返回错误
         if not all([isbn, title]):
@@ -112,14 +120,19 @@ def amazon():
 
 
 # 接收来自客户端的抓取结果
+@app.route('/amazon/update', method='POST')
 @app.route('/amazon/push', method='POST')
 def amazon_push():
     try:
         token = request.forms.get('token')
         isbn = request.forms.get('isbn')
         isbn = str(isbn).strip()
-        title = request.forms.get('title')
-        title = title.encode('ISO-8859-1').decode('utf-8', 'ignore')
+
+        # 客户端传过来的中文内容，编码格式不可控；v 18.0 之后，改从豆瓣抓请标题、作者等信息。
+        bookInfo = fetchDoubanBookInfo(isbn)
+        title = bookInfo.get('title', '')
+        author = bookInfo.get('author', '')
+
         price = request.forms.get('price')
         price = str('{:.2f}'.format(float(price)))
         url = request.forms.get('url')
@@ -140,6 +153,7 @@ def amazon_push():
         book = {
             'isbn': isbn,
             'title': title,
+            'author': author,
             'price': price,
             'url': url,
             'ku': ku,
@@ -204,7 +218,7 @@ def weread():
         'errmsg': '',
         'vendor': 'weread',
         'token': '',
-        'ematch': True,
+        'isbn_match': True,
         'ext': ''
     }
 
@@ -227,6 +241,8 @@ def weread():
         if cached_data:
             try:
                 book = json.loads(cached_data)
+                # 兼容历史数据：微信读书改版，URL 有变化
+                book['url'] = book['url'].replace('reader', 'bookDetail')
                 result['data'] = book
                 result['ext'] = 'r'
                 resp = json.dumps(result)
@@ -249,13 +265,24 @@ def weread():
         totalCount_isbn = content.get('books') or []
 
         if totalCount_isbn:
-            items = wereadResultHandle(content['books'][:5], isbn, title, author, 1)
+            items = wereadResultHandle(content['books'][:10], isbn, title, author, 1)
             bookList.extend(items)
         # ISBN 没有搜索到，使用其他信息搜索
         else:
-            result['ematch'] = False
+            result['isbn_match'] = False
 
-            # 微信读书启用全文搜索，结果非常不精准，所以同时增加两类关键词的搜索
+            # 微信读书启用全文搜索，结果非常不精准，所以同时增加三类关键词的搜索
+
+            # 仅用标题搜索
+            keyword = f'{title}'
+            url = 'https://weread.qq.com/web/search/global'
+            params = {'keyword': keyword}
+            resp = sess.get(url, params=params, timeout=100)
+            content = resp.json()
+            totalCount_title = content.get('books') or []
+            if totalCount_title:
+                items = wereadResultHandle(content['books'][:5], isbn, title, author, 4)
+                bookList.extend(items)
 
             # 用标题+副标题搜索
             if subtitle:
@@ -281,8 +308,6 @@ def weread():
                 items = wereadResultHandle(content['books'][:5], isbn, title, author, 3)
                 bookList.extend(items)
 
-        sess.close()
-
         # 没有搜索到结果，返回错误
         if not bookList:
             result['errmsg'] = 'book not found.'
@@ -291,14 +316,11 @@ def weread():
 
         # 按分数排序
         bookList.sort(key=lambda a: a['score'], reverse=True)
-
-        # print(bookList)
-
         _book = bookList[0]
 
         # 微信读书搜索结果没有直接返回 URL（URL 是通过解密得到的，暂时破解不了）
         # 这里使用 docker + selenium 模拟查询，根据上面步骤中得到的结果位置、标识符，以及查询类型，获取 URL
-        bookUrl = headlessBrowser(_book)
+        bookUrl = hb_weread(_book)
 
         # 查找URL失败，返回错误
         if not bookUrl:
@@ -306,12 +328,22 @@ def weread():
             resp = json.dumps(result)
             return resp
 
+        if float(_book['price']) < 0.00:
+            resp = sess.get('https://weread.qq.com{}'.format(bookUrl))
+            content = resp.text
+            pattern = r'"centPrice":(\d+)'
+            price = re.search(pattern, content).group(1)
+            price = str('{:.2f}'.format(float(price) / 100))
+            _book['price'] = price
+
+        sess.close()
+
         book = {
             'isbn': isbn,
             'title': _book['title'],
             'author': _book['author'],
             'price': _book['price'],
-            'url': 'https://weread.qq.com{}'.format(bookUrl),
+            'url': 'https://weread.qq.com{}'.format(bookUrl).replace('reader', 'bookDetail'),
             'vendor': 'weread',
             'update_time': arrow.now().format('YYYY-MM-DD HH:mm:ss')
         }
@@ -473,7 +505,7 @@ def duokan():
         'errmsg': '',
         'vendor': 'duokan',
         'token': '',
-        'ematch': True,
+        'isbn_match': True,
         'ext': ''
     }
 
@@ -546,6 +578,7 @@ def duokan():
     resp = json.dumps(result)
     return resp
 
+
 # 京东读书，只使用 ISBN 查询，返回精确的书籍信息
 @app.route('/jd', method='GET')
 def jd():
@@ -558,7 +591,7 @@ def jd():
         'errmsg': '',
         'vendor': 'jd',
         'token': '',
-        'ematch': True,
+        'isbn_match': True,
         'ext': ''
     }
 
@@ -588,37 +621,26 @@ def jd():
 
         sess = genNewSession()
 
-        # 伪装成正常用户访问
-        sess.get('https://s-e.jd.com/')
-        sess.headers.update({'Referer': 'https://s-e.jd.com/'})
-
-        # 查询书籍信息
-        url = 'https://s-e.jd.com/Search'
-        params = {
-            'key': isbn,
-            'enc': 'utf-8',
-            'pvid': genPvid(),
-        }
-        resp = sess.get(url, params=params, timeout=100)
-        content = resp.text
-        pattern = r'<div class="p-price">\s*<strong id="(J_\d+)">'
-        skuid = re.findall(pattern, content)
+        # 京东接口升级，改用 selenium 爬取
+        bookUrl = hb_jd(isbn)
 
         # 没有结果，返回错误
-        if not skuid:
+        if not bookUrl:
             sess.close()
             result['errmsg'] = 'book not found.'
             resp = json.dumps(result)
             return resp
 
-        # 获取价格
-        skuid = skuid[0]
-        url = f'https://p.3.cn/prices/mgets?skuids={skuid}&type=1'
+        bookCode = re.search(r'(\d+)\.html', bookUrl).group(1)
+
+        # 获取价格信息
+        url = f'https://gw-e.jd.com/forBookCode/forBookCode_getEbookInFoAndOrginPrices4JSONP.action?bookCodes={bookCode}&callback=jQuery1454732'
         resp = sess.get(url, timeout=100)
         sess.close()
-        content = resp.json()
-        price = str('{:.2f}'.format(float(content[0]["p"])))
-        bookUrl = 'https://e.jd.com/{}.html'.format(skuid.replace('J_', ''))
+        content = resp.text
+        pattern = r'"jdPrice":\s*([\d\.]+)'
+        price = re.search(pattern, content).group(1)
+        price = str('{:.2f}'.format(float(price)))
 
         book = {
             'isbn': isbn,

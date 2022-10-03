@@ -3,7 +3,6 @@
 import requests
 import re
 from thefuzz import fuzz
-import js2py
 
 
 def genNewSession():
@@ -34,14 +33,14 @@ def adjustNum(numerator, denominator):
         result = 1.0
     return result
 
-
 def wereadResultHandle(books, isbn, title, author, queryKind):
     itemList = []
     for idx, b in enumerate(books):
         book = b['bookInfo']
+
         # 不知道为什么，有的书籍售价为负数，这里做一下处理
         if float(book['price']) < 0.00:
-            continue
+            book['price'] = 0.00
 
         # 微信读书启用全文（含书本内容）匹配，所以需要做标题相似度计算
         titleRatio = fuzz.partial_ratio(book['title'], title)
@@ -81,14 +80,24 @@ def wereadResultHandle(books, isbn, title, author, queryKind):
         itemList.append(item)
     return itemList
 
-
-def genPvid():
-    js_fnc = '''
-        function(){var a=(new Date).getTime();var b="xxxxxxxxxxxx4xxxyxxxxxxxxxxxxxxx".replace(/[xy]/g,function(b){var c=(a+16*Math.random())%16|0;return a=Math.floor(a/16),("x"==b?c:3&c|8).toString(16)});return b}
-    '''
-    pvid = js2py.eval_js(js_fnc)()
-    return pvid
-
+def fetchDoubanBookInfo(isbn):
+    bookInfo = {}
+    try:
+        headers = {
+            'Referer': f'https://search.douban.com/book/subject_search?search_text={isbn}&cat=1001',
+            'Origin': 'https://search.douban.com'
+        }
+        sess = genNewSession()
+        sess.headers.update(headers)
+        url = f'https://book.douban.com/j/subject_suggest?q={isbn}'
+        resp = sess.get(url, timeout=100)
+        sess.close()
+        content = resp.json()[0]
+        bookInfo['title'] = content['title']
+        bookInfo['author'] = content['author_name']
+    except:
+        pass
+    return bookInfo
 
 if __name__ == '__main__':
     pass

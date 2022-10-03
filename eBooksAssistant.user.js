@@ -2,24 +2,26 @@
 // @name         eBooks Assistant
 // @name:zh-CN   豆瓣读书助手
 // @namespace    https://github.com/caspartse/eBooksAssistant
-// @version      0.17.3
+// @version      0.18.0
 // @description  eBooks Assistant for douban.com
 // @description:zh-CN 为豆瓣读书页面添加亚马逊Kindle、微信读书、多看阅读、京东读书、当当云阅读、喜马拉雅等直达链接
 // @author       Caspar Tse
 // @license      MIT License
 // @supportURL   https://github.com/caspartse/eBooksAssistant
 // @match        https://book.douban.com/subject/*
-// @require      https://cdn.bootcdn.net/ajax/libs/jquery/3.6.0/jquery.min.js
+// @require      https://cdn.bootcdn.net/ajax/libs/jquery/3.6.1/jquery.min.js
 // @connect      amazon.cn
+// @connect      api.youdianzishu.com
 // @connect      8.210.230.166
 // @connect      127.0.0.1
 // @grant        GM_xmlhttpRequest
 // ==/UserScript==
 
 (function() {
-    var version = "0.17.3";
+    var version = "0.18.0";
     // 如果自己部署服务，这里修改成你的服务器地址
-    var domain = "http://8.210.230.166:8081";
+    var domain = "https://api.youdianzishu.com"
+    // var domain = "http://127.0.0.1:8081";
     // for debug
     // var domain = "http://127.0.0.1:8082";
 
@@ -44,7 +46,7 @@
     }
 
     // 客户端本地抓取，如有结果，结果共享给服务器
-    function queryAmazon_Local(isbn, title, token="") {
+    function queryAmazon_Local(isbn, title, author, token="") {
         GM_xmlhttpRequest({
             method: "GET",
             url: `https://www.amazon.cn/s?__mk_zh_CN=亚马逊网站&i=digital-text&k=${isbn}&ref=nb_sb_noss&url=search-alias%3Ddigital-text`,
@@ -74,13 +76,19 @@
                         <img src="${b64_icon_kindle}" width="16" height="16"> <span>Kindle</span> </a> </div></div> </div>`;
                         $("#link-report").after(partnerTemplate);
                     }
-                    var regexbookPrice = /<span class="a-offscreen">[￥¥]([0-9\.]+)<\/span>/gi;
-                    var bookPrice = regexbookPrice.exec(doc)[1];
-                    var regexAmazonKu = /(免费借阅)|(免费阅读此书)|(涵盖在您的会员资格中)|(或者[￥¥][0-9\.]+购买)/gi;
+                    var bookPrice = "";
+                    try {
+                        var regexbookPrice1 = /<span[^>]*class="a-offscreen"[^>]*>\s*[￥¥]([\d\.]+)\s*<\/span>/gi;
+                        bookPrice = regexbookPrice1.exec(doc)[1];
+                    } finally {
+                        var regexAmazonPrice2 = /<span[^>]*id="kindle-price"[^>]*>\s*[￥|¥]([\d\.]+)\s*<\/span>/gi;
+                        bookPrice = regexAmazonPrice2.exec(doc)[1];
+                    }
+                    var regexAmazonKu = /(免费借阅)|(免费阅读此书)|(涵盖在您的会员资格中)|(或者[￥¥][\d\.]+购买)/gi;
                     var amazonKu = regexAmazonKu.test(doc);
                     var buyItemTemplate = ""
                     if (amazonKu) {
-                        regexbookPrice = /或者[￥¥]([0-9\.]+)购买/gi
+                        var regexbookPrice = /或者[￥¥]([\d\.]+)购买/gi
                         bookPrice = regexbookPrice.exec(doc)[1];
                         buyItemTemplate = `<li> <div class="cell price-btn-wrapper"> <div class="vendor-name"> <a target="_blank" href="${bookUrl}"> <span>
                         <img alt="Kindle Unlimited" src="${b64_icon_ku}" width="75" height="10" border="0">
@@ -99,7 +107,7 @@
                     GM_xmlhttpRequest({
                         method: "POST",
                         url: `${domain}/amazon/push?isbn=${isbn}`,
-                        data: `isbn=${isbn}&title=${title}&price=${bookPrice}&url=${amazonShortUrl}&ku=${amazonKu}&token=${token}&version=${version}`,
+                        data: `isbn=${isbn}&title=${title}&author=${author}&price=${bookPrice}&url=${amazonShortUrl}&ku=${amazonKu}&token=${token}&version=${version}`,
                         headers: {
                             "Content-Type": "application/x-www-form-urlencoded"
                         }
@@ -116,7 +124,7 @@
     // 但目前遇到一个问题是，难以保证数据最新的，因为请求量较大，屡屡触发亚马逊的反爬虫机制。
     // 因此，需要借助各位的力量，去中心化地对数据进行校验和更新。下面这个函数，只会更新当前页面书籍的信息(价格、是否KU)
 
-    function feedBackAmazon(isbn, url, token="") {
+    function feedbackAmazon(isbn, url, token="") {
         GM_xmlhttpRequest({
             method: "GET",
             url: url,
@@ -125,10 +133,12 @@
             },
             onload: function(responseDetail) {
                 var doc = responseDetail.responseText;
-                var regexbookPrice = /<span id="kindle-price"[^>]+>\s*[￥|¥]([0-9\.]+)\s*<\/span>/gi;
+                var regexbookPrice = /<span[^>]*id="kindle-price"[^>]*>\s*[￥|¥]([\d\.]+)\s*<\/span>/gi;
                 var bookPrice = regexbookPrice.exec(doc)[1];
-                var regexAmazonKu = /(免费借阅)|(免费阅读此书)|(涵盖在您的会员资格中)|(或者[￥¥][0-9\.]+购买)/gi;
+                console.log(bookPrice);
+                var regexAmazonKu = /(免费借阅)|(免费阅读此书)|(涵盖在您的会员资格中)/gi;
                 var amazonKu = regexAmazonKu.test(doc);
+                console.log(amazonKu);
                 GM_xmlhttpRequest({
                     method: "POST",
                     url: `${domain}/amazon/feedback?isbn=${isbn}`,
@@ -188,7 +198,7 @@
                     $("#buyinfo ul:nth-child(2)").prepend(buyItemTemplate);
                     var ext = result.ext;
                     if (ext == "r") {
-                        feedBackAmazon(isbn, bookUrl, token);
+                        feedbackAmazon(isbn, bookUrl, token);
                     }
                 } else {
                     console.log("call queryAmazon_Local.");
@@ -469,6 +479,7 @@
     queryXimalaya_Remote(isbn, title, subtitle, author, translator, publisher);
     queryJingdong_Remote(isbn, title, subtitle, author, translator, publisher);
     queryDangdang_Remote(isbn, title, subtitle, author, translator, publisher);
+    // queryAmazon_Local(isbn, title, author);
 
     return;
 })();
