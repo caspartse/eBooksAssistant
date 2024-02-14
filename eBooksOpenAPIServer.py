@@ -95,7 +95,7 @@ def teardown_request():
 @app.error(401)
 @app.error(403)
 @app.error(404)
-# @app.error(500)
+@app.error(500)
 def error_handler(error):
     request_id = _REQUEST_IDS.get(threading.get_ident())
     code = error.status_code
