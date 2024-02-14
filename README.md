@@ -1,124 +1,71 @@
 # 豆瓣读书助手
-eBooks Assistant for douban.com .
+eBooks Assistant for douban.com, weread.qq.com .
 
-为豆瓣读书页面添加亚马逊Kindle、微信读书、多看阅读、京东读书、当当云阅读、喜马拉雅等直达链接。
+为豆瓣读书页面添加微信读书、多看阅读、京东读书、当当云阅读、喜马拉雅等直达链接; 为微信读书增加豆瓣评分及链接。
 
 
 
 ## 主要功能
 
--  添加亚马逊 Kindle ([amazon.cn](https://www.amazon.cn/)) 在线试读链接、购买链接(可标识出 Kindle Unlimited 电子书)；
--  添加微信读书 ([weread.qq.com](https://weread.qq.com/)) 在线试读链接、购买链接；
--  添加多看阅读 ([duokan.com](http://www.duokan.com/)) 在线试读链接、购买链接；
--  添加京东读书 ([e.jd.com](https://e.jd.com/)) 在线试读链接、购买链接；
--  添加当当云阅读 ([e.dangdang.com](http://e.dangdang.com/)) 在线试读链接、购买链接；
--  添加喜马拉雅 ([ximalaya.com](https://www.ximalaya.com/)) 在线试听链接。
+- 豆瓣读书页面
+  - 添加微信读书在线试读链接；
+  - 添加多看阅读在线试读链接；
+  - 添加京东读书在线试读链接；
+  - 添加当当云阅读在线试读链接；
+  - 添加喜马拉雅在线试听链接。
 
+ ![豆瓣读书页面](static/images/screenshots/douban_20240212.png)
 
-![](https://raw.githubusercontent.com/caspartse/eBooksAssistant/main/images/screenshots-01.jpg)
+- 微信读书页面
+  - 添加豆瓣读书评分及链接。
 
-![](https://raw.githubusercontent.com/caspartse/eBooksAssistant/main/images/screenshots-02.jpg)
-
-
-
-## 安装客户端
-
-- 从 Greasy Fork 在线安装：[https://greasyfork.org/en/scripts/412479-ebooks-assistant](https://greasyfork.org/en/scripts/412479-ebooks-assistant)
-
-- 下载到本地安装： [eBooksAssistant.user.js](https://github.com/caspartse/eBooksAssistant/blob/main/eBooksAssistant.user.js)
+![微信读书页面](static/images/screenshots/weread_20231001.png)
 
 
 
-## 服务器端部署
+## 安装使用
 
-### 工作流程图
+从 [Greasy Fork](https://greasyfork.org/en/scripts/412479-ebooks-assistant) 上安装油猴脚本。
 
-![](https://raw.githubusercontent.com/caspartse/eBooksAssistant/main/images/diagrams-01.jpg)
-
-![](https://raw.githubusercontent.com/caspartse/eBooksAssistant/main/images/diagrams-02.jpg)
-
-### 安装步骤
-
-#### 0. Clone 本项目
-
-```bash
-$ git clone https://github.com/caspartse/eBooksAssistant.git
-$ cd ./eBooksAssistant && ls
-```
-
-#### 1. 安装 Redis 服务
-
-```bash
-$ sudo apt-get install redis-server
-$ sudo systemctl enable redis-server.service
-```
-
-- 可选：可以使用 [redis-dump](https://github.com/delano/redis-dump) 的 `redis-load` 命令加载已存储的电子书数据。
-
-```bash
-$ sudo apt-get install ruby ruby-dev libc6-dev
-$ gem install redis-dump
-$ < ./data/db_full.json redis-load
-```
-
-#### 2. 安装 Docker 及 Selenium 服务
-
-```bash
-$ sudo apt-get install docker.io
-$ sudo systemctl enable docker.service
-$ sudo systemctl enable containerd.service
-$ docker run -d -p 4444:4444 --shm-size="2g" selenium/standalone-chrome:4.1.2-20220131
-```
-
-- docker-selenium 自定义配置请参考：[https://github.com/SeleniumHQ/docker-selenium](https://github.com/SeleniumHQ/docker-selenium)
-- 容器配置
-
-```bash
-$ docker ps -a # 查看容器 ID
-$ docker update --restart unless-stopped xxxxxx # 更新设置
-```
+安装后，浏览器访问下列链接，并点击浏览器右上角的油猴图标，选择 `eBooks Assistant` 脚本，即可看到效果。
+  - 豆瓣读书页面： [https://book.douban.com/subject/34434342/](https://book.douban.com/subject/34434342/)
+  - 微信读书页面： [https://weread.qq.com/web/bookDetail/9ef32b805abab59ef601a6c](https://weread.qq.com/web/bookDetail/9ef32b805abab59ef601a6c)
 
 
-![](https://raw.githubusercontent.com/caspartse/eBooksAssistant/main/images/screenshots-03.png)
 
-#### 3. 安装 Python 依赖库
+## 开放接口
 
-```bash
-$ sudo apt-get install python3-dev
-$ pip3 install -r ./requirements.txt
-```
+本项目**免费提供**图书元数据（Metadata）API 接口，申请方法及使用说明见《API 参考文档》（[API Reference](references/API_Reference.md)）。
 
-#### 4. 主服务配置
-
-- 更改工作路径；
-将 `./config/ebooks_assistant.service`、`./config/amazon.service` 两个文件中的工作路径改为**项目所在的路径**。
-```bash
-WorkingDirectory=/path/to/project
-```
-- 之后启用服务。
-
-```bash
-$ sudo cp ./config/*service /usr/lib/systemd/system/
-$ sudo systemctl enable ebooks_assistant.service
-$ sudo service ebooks_assistant restart
-$ sudo systemctl enable amazon.service
-$ sudo service amazon restart
-```
-
-#### 5. 修改服务地址
-
-- 服务器端配置成功后，修改客户端（eBooksAssistant.user.js）中的服务器地址即可（**有两处**）。
+![OpenAPI返回结果](static/images/openapi_20240212.png)
 
 
-```javascript
-// @connect      xxx.xxx.xxx.xxx
-```
+
+## 代码开源
+
+本项目的服务端代码是开源的，你可以通过克隆代码的方式，**一键部署**自己的服务。
+
+具体的部署步骤和要求，请参照《本地部署参考文档》（[Self-Hosted Reference](references/Self_Hosted_Reference.md)）部分。
+
+![係愛呀哈利](static/images/meme.png)
 
 
-```javascript
-// 如果自己部署服务，这里修改成你的服务器地址
-var domain = "http://xxx.xxx.xxx.xxx:8081";
-```
+
+## 请赞助本项目
+
+如果你觉得本项目对你有所帮助，请考虑赞助我一杯咖啡以示支持。感谢你的慷慨！😊☕️
+
+<a href="https://www.buymeacoffee.com/caspartse?utm_source=github" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" style="height: 60px !important;width: 217px !important;" ></a>
+
+🥰 其他赞助方式：[爱发电](https://afdian.net/a/caspartse)
+
+
+
+## 意见反馈
+
+如果有任何问题，欢迎提交 [Issue](https://weread.qq.com/web/bookDetail/8e0321c0718a6c928e0ab0e) 或加入 [Telegram 群组](https://t.me/+zeNNYQKkp71jNjc1) 交流讨论。
+
+
 
 ## License
 

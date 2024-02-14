@@ -1,0 +1,15 @@
+# copy this file to '/usr/lib/systemd/system/': sudo cp ebooks_openapi.service /usr/lib/systemd/system/
+# then enable service with command: sudo systemctl enable ebooks_openapi.service && sudo systemctl start ebooks_openapi.service
+[Unit]
+Description=eBooks OpenAPI Server
+After=network.target
+
+[Service]
+EnvironmentFile=/etc/environment
+Type=simple
+WorkingDirectory=/path/to/project
+ExecStart=/usr/bin/python3 -m gunicorn -w 8 -b 0.0.0.0:8088 eBooksOpenAPIServer:app
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

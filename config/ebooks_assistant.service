@@ -1,13 +1,14 @@
-# copy this file to '/usr/lib/systemd/system/': cp ebooks_assistant.service /usr/lib/systemd/system/
-# then enable service with command: systemctl enable ebooks_assistant.service && service ebooks_assistant restart
+# copy this file to '/usr/lib/systemd/system/': sudo cp ebooks_assistant.service /usr/lib/systemd/system/
+# then enable service with command: sudo systemctl enable ebooks_assistant.service && sudo systemctl start ebooks_assistant.service
 [Unit]
 Description=eBooks Assistant Server
 After=network.target
 
 [Service]
+EnvironmentFile=/etc/environment
 Type=simple
 WorkingDirectory=/path/to/project
-ExecStart=/usr/local/bin/gunicorn eBooksAssistantServer:app -c ./config/ebooks_assistant_gunicorn.conf.py
+ExecStart=/usr/bin/python3 -m gunicorn eBooksAssistantServer:app -c ./config/ebooks_assistant_gunicorn.conf.py
 Restart=always
 
 [Install]
