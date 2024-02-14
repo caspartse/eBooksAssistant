@@ -63,7 +63,7 @@ eBooks Assistant for douban.com, weread.qq.com .
 
 ## 意见反馈
 
-如果有任何问题，欢迎提交 [Issue](https://weread.qq.com/web/bookDetail/8e0321c0718a6c928e0ab0e) 或加入 [Telegram 群组](https://t.me/+zeNNYQKkp71jNjc1) 交流讨论。
+如果有任何问题，欢迎提交 [Issue](https://github.com/caspartse/eBooksAssistant/issues) 或加入 [Telegram 群组](https://t.me/+zeNNYQKkp71jNjc1) 交流讨论。
 
 
 
