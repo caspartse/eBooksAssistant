@@ -31,9 +31,7 @@ def create_key(user_id: str, days: int, quota: int, secret_key: str = JWT_SECRET
     '''
     生成 API Key
     :param user_id: 用户ID
-    :param jwt_token: JWT token
-    :param iat: token 签发时间
-    :param exp: token 过期时间
+    :param days: 有效期
     :param quota: 配额
     :param secret_key: JWT_SECRET_KEY
     :return: API Key
@@ -50,10 +48,10 @@ def create_key(user_id: str, days: int, quota: int, secret_key: str = JWT_SECRET
 
     # 保存用户信息
     q = f'''
-        INSERT INTO openapi_user (user_id, api_key, quota, credit)
-        VALUES ('{user_id}', '{api_key}', {quota}, {quota})
+        INSERT INTO openapi_user (user_id, api_key, quota, credit, usage)
+        VALUES ('{user_id}', '{api_key}', {quota}, {quota}, 0)
         ON CONFLICT (user_id) DO UPDATE
-        SET api_key = EXCLUDED.api_key;
+        SET api_key = EXCLUDED.api_key, quota = EXCLUDED.quota, credit = EXCLUDED.credit;
     '''
     cur.execute(q)
     conn.commit()
@@ -78,8 +76,8 @@ def create_key(user_id: str, days: int, quota: int, secret_key: str = JWT_SECRET
 
     cur.close()
     db_pool.putconn(conn)
-
     return api_key
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
