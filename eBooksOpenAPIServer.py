@@ -67,6 +67,7 @@ def teardown_request():
                 FROM openapi_log
                 WHERE api_key = '{api_key}'
                 AND DATE_TRUNC('month', receive_time) = DATE_TRUNC('month', CURRENT_TIMESTAMP)
+                AND result <> ''
                 GROUP BY api_key
             ), t2 AS (
                 SELECT u.api_key, COALESCE(t1.cnt, 0) AS usage

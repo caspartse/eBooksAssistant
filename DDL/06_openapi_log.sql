@@ -10,7 +10,7 @@ CREATE TABLE "public"."openapi_log" (
   "request_url" text COLLATE "pg_catalog"."default",
   "request_headers" text COLLATE "pg_catalog"."default",
   "status_code" int2,
-  "result" text COLLATE "pg_catalog"."default"
+  "result" text COLLATE "pg_catalog"."default" DEFAULT ''::text
 )
 ;
 ALTER TABLE "public"."openapi_log" OWNER TO "postgres";
@@ -23,6 +23,9 @@ CREATE INDEX "idx_openapi_log_api_key" ON "public"."openapi_log" USING btree (
 );
 CREATE INDEX "idx_openapi_log_receive_time" ON "public"."openapi_log" USING btree (
   "receive_time" "pg_catalog"."timestamp_ops" ASC NULLS LAST
+);
+CREATE INDEX "idx_openapi_log_result" ON "public"."openapi_log" USING btree (
+  "result" COLLATE "pg_catalog"."default" "pg_catalog"."text_ops" ASC NULLS LAST
 );
 
 -- ----------------------------
