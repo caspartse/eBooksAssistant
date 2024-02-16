@@ -731,8 +731,10 @@ def c_douban_info(isbn: str) -> dict:
             content = content.replace('&nbsp;', ' ')
 
             # 豆瓣评分-数值 douban_rating_score
+            douban_rating_score = ''
             matches = re.search(r'<strong class="ll rating_num " property="v:average">([\s\S]+?)</strong>', content)
-            douban_rating_score = matches.group(1).strip() if matches else '0.0'
+            douban_rating_score = matches.group(1).strip() if matches else ''
+            douban_rating_score = douban_rating_score if douban_rating_score else '0.0'
             # 豆瓣评分-星星 douban_rating_star
             douban_rating_star = f'douban_rating_star_{round(float(douban_rating_score) + 0.0001)}'
             # 出版社 publisher
