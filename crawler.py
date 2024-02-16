@@ -780,7 +780,7 @@ def c_douban_info(isbn: str) -> dict:
                 matches = re.search(r'<span class="pl">\s*丛书:?</span>\s*:?\s*([\s\S]+?)<br/?>', content)
                 series = matches.group(1).strip() if matches else ''
             # 内容简介 description
-            matches = re.search(r'<meta property="og:description" content="([\s\S]+?)" />', content)
+            matches = re.search(r'<meta property="og:description" content="([^"]*)" />', content)
             description = matches.group(1).strip() if matches else ''
             description = re.sub(r'<[^>]+>|\n', '', description)
 
