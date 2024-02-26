@@ -313,7 +313,7 @@ def metadata_main() -> str:
     if not api_key:
         abort(401, 'API key is required.')
     if not re.match(r'^eba-[0-9a-f]{32}$', api_key):
-        abort(401, 'Invalid API key: Worng format.')
+        abort(401, 'Invalid API key: Wrong format.')
 
     # 验证 API key
     jwt_token = query_jwt_token(api_key)
